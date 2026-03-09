@@ -1,0 +1,2389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESD Generator — Oportun MX</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@600;700;800&display=swap');
+
+  :root {
+    --bg: #060b14;
+    --surface: #0d1626;
+    --surface2: #111d33;
+    --border: #1e2d47;
+    --border2: #243552;
+    --blue: #3b82f6;
+    --blue2: #60a5fa;
+    --violet: #8b5cf6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #475569;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    padding: 12px;
+  }
+
+  #app { max-width: 600px; margin: 0 auto; }
+
+  /* HEADER */
+  .header {
+    text-align: center;
+    padding: 14px 0 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .header h1 {
+    font-family: var(--sans);
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .header p { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+  /* SEARCH BAR */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+  }
+  .search-bar input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 100%;
+  }
+  .search-bar input::placeholder { color: var(--text3); }
+  .search-icon { color: var(--text3); font-size: 14px; }
+
+  /* TABS */
+  .tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .tab-group { display: flex; flex-direction: column; gap: 4px; }
+  .tab-group-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0 4px;
+    margin-bottom: 2px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 7px;
+    padding: 9px 10px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: left;
+    transition: all 0.12s;
+    width: 100%;
+  }
+  .btn:hover { border-color: var(--blue); color: var(--text); background: #131f35; }
+  .btn.active { background: #1a3060; border-color: var(--blue); color: #fff; }
+  .btn-sub { font-size: 10px; color: var(--text3); font-weight: 400; display: block; margin-top: 2px; }
+  .btn-back {
+    padding: 4px 10px;
+    font-size: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: var(--mono);
+  }
+  .btn-back:hover { color: var(--text2); border-color: var(--border2); }
+
+  .btn-generate {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+  .btn-generate:hover { opacity: 0.9; }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .section-title { font-family: var(--sans); font-size: 13px; font-weight: 700; }
+
+  /* CATEGORY BADGES */
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+  }
+  .badge-agent { background: #1a3060; color: var(--blue2); }
+  .badge-customer { background: #1a2e1a; color: var(--green); }
+  .badge-ops { background: #2e1a1a; color: var(--red); }
+
+  /* MENU GRID */
+  .menu-section { margin-bottom: 18px; }
+  .menu-section-title {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0 2px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .menu-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .menu-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+  /* SYSTEM LIST */
+  .system-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .system-item .problems-count { font-size: 10px; color: var(--text3); }
+
+  /* FORM */
+  .field { margin-bottom: 8px; }
+  .field label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 7px 9px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    resize: vertical;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--blue);
+  }
+  .field select option { background: var(--surface2); }
+
+  /* LANG TOGGLE */
+  .lang-toggle { display: flex; gap: 5px; margin-bottom: 10px; }
+  .lang-btn {
+    flex: 1;
+    padding: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .lang-btn.active { background: #1a3060; border-color: var(--blue); color: #fff; }
+
+  /* RESOLUTION HINT */
+  .resolution-hint {
+    background: #160d2e;
+    border: 1px solid #2d1d5e;
+    border-radius: 5px;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    font-size: 10px;
+    color: #a78bfa;
+  }
+
+  /* OUTPUT BLOCKS */
+  .output-block {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+  }
+  .output-title { font-size: 12px; font-weight: 700; color: var(--blue2); }
+  .output-tag {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .output-tag-slack { background: #1a2e1a; color: var(--green); }
+  .output-tag-snow { background: #1a1a3e; color: var(--blue2); }
+  .output-tag-note { background: #2e1a0d; color: var(--amber); }
+  .output-pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11.5px;
+    color: #cbd5e1;
+    line-height: 1.5;
+    font-family: var(--mono);
+  }
+  .copy-btn {
+    padding: 5px 12px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .copy-btn.ok { background: var(--green); }
+
+  /* PREBUILT NOTE CARD */
+  .prebuilt-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--blue);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .prebuilt-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .prebuilt-card-title { font-size: 12px; font-weight: 700; color: var(--text); }
+  .prebuilt-pre {
+    font-size: 10.5px;
+    color: var(--text2);
+    white-space: pre-wrap;
+    line-height: 1.4;
+    font-family: var(--mono);
+  }
+
+  /* TIME DISPLAY */
+  .time-display {
+    background: #0d1a30;
+    border-radius: 5px;
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    color: var(--blue2);
+  }
+
+  /* ONBOARDING */
+  .ob-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .ob-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  /* PASSWORD FLOW */
+  .pw-step {
+    font-size: 11px;
+    color: var(--text2);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .pw-step-num { color: var(--blue2); font-weight: 700; }
+
+  /* SEARCH RESULTS */
+  .search-results { margin-top: 6px; }
+  .search-result-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: border-color 0.1s;
+  }
+  .search-result-item:hover { border-color: var(--blue); }
+  .search-result-category { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .search-result-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .search-result-preview { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .highlight { color: var(--blue2); font-weight: 700; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* HIDDEN */
+  .hidden { display: none; }
+
+  /* FOOTER */
+  .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 9px; color: var(--border2); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>⚡ ESD Generator v1</h1>
+    <p>Oportun ESD L1 · SNOW Notes · Slack Messages · Proper · Follow-up</p>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="globalSearch" placeholder="Search keywords: five9, zeus, escalation, onboarding..." oninput="handleSearch(this.value)">
+  </div>
+  <div id="searchResults" class="hidden search-results"></div>
+
+  <!-- MAIN VIEWS -->
+  <div id="viewMenu">
+    <!-- SNOW NOTES -->
+    <div class="menu-section">
+      <div class="menu-section-title">📋 ServiceNow Notes</div>
+      <div class="menu-grid">
+        <button class="btn" onclick="goTo('system','escalamiento')">
+          ⬆️ Escalation Note
+          <span class="btn-sub">INC technical escalation</span>
+        </button>
+        <button class="btn" onclick="goTo('system','cierre')">
+          ✅ Closure Note
+          <span class="btn-sub">Issue resolved</span>
+        </button>
+        <button class="btn" onclick="goTo('system','no_es_issue')">
+          🚫 Not an Issue
+          <span class="btn-sub">Ops process — close</span>
+        </button>
+        <button class="btn" onclick="goTo('system','hardware')">
+          🖥️ Hardware Note
+          <span class="btn-sub">Equipment issues</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SLACK MESSAGES -->
+    <div class="menu-section">
+      <div class="menu-section-title">💬 Slack Messages</div>
+      <div class="menu-grid">
+        <button class="btn" onclick="goTo('system','primer_contacto')">
+          📨 First Contact
+          <span class="btn-sub">Agent issue · steps included</span>
+        </button>
+        <button class="btn" onclick="goTo('system','troubleshooting')">
+          🔧 Troubleshooting
+          <span class="btn-sub">Zscaler / Chrome / Okta</span>
+        </button>
+        <button class="btn" onclick="goTo('system','cierre_slack')">
+          ✅ Closure Message
+          <span class="btn-sub">Resolved notification</span>
+        </button>
+        <button class="btn" onclick="goTo('system','no_es_issue_slack')">
+          🚫 Not an Issue
+          <span class="btn-sub">Ops redirect message</span>
+        </button>
+        <button class="btn" onclick="showZoomInvite()" style="border-color:var(--cyan);background:linear-gradient(135deg,#111d3399,#0a2a2a88);">
+          📅 Zoom Invite
+          <span class="btn-sub">Live session request</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CUSTOMER ISSUES -->
+    <div class="menu-section">
+      <div class="menu-section-title">👤 Customer Issues <span class="badge badge-customer">via agent</span></div>
+      <div class="menu-grid">
+        <button class="btn" onclick="goTo('system','primer_contacto','customer')">
+          📨 First Contact
+          <span class="btn-sub">OA · Payments · App</span>
+        </button>
+        <button class="btn" onclick="showPrebuilt()">
+          📋 Pre-built Notes
+          <span class="btn-sub">DNE · SMS · PNM · ITIN</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- TASK TEMPLATES -->
+    <div class="menu-section">
+      <div class="menu-section-title">📑 TASK / RITM Templates</div>
+      <div class="menu-grid">
+        <button class="btn" onclick="showOnboarding()">
+          👤 Onboarding
+          <span class="btn-sub">Okta · AD · Loomis</span>
+        </button>
+        <button class="btn" onclick="showOffboarding()">
+          🚪 Offboarding
+          <span class="btn-sub">Disable · Encapture</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PROPER / KB RULES -->
+    <div class="menu-section">
+      <div class="menu-section-title">📐 Proper / KB Rules</div>
+      <div class="menu-grid">
+        <button class="btn" onclick="showProper()">
+          🔁 Convert Ticket
+          <span class="btn-sub">REQ↔INC · Access Request</span>
+        </button>
+        <button class="btn" onclick="showProperPlaceholder()">
+          📖 KB Rules
+          <span class="btn-sub">Coming soon</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- FOLLOW-UP MATRIX -->
+    <div class="menu-section">
+      <div class="menu-section-title">📊 Follow-up Matrix</div>
+      <div class="menu-grid">
+        <button class="btn" onclick="showMatrix()">
+          ⏱️ Incident Process
+          <span class="btn-sub">Who · When · Script</span>
+        </button>
+        <button class="btn" onclick="showMatrixPlaceholder()">
+          📋 Contact Log +
+          <span class="btn-sub">Coming soon</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SMART GENERATOR -->
+    <div class="menu-section">
+      <div class="menu-section-title">🤖 Smart Generator <span style="background:#8b5cf622;color:#a78bfa;font-size:8px;padding:2px 6px;border-radius:3px;font-family:var(--mono);font-weight:700;">NEW</span></div>
+      <div class="menu-grid">
+        <button class="btn" onclick="showSmartGen()" style="border-color:var(--violet);background:linear-gradient(135deg,#111d3399,#1e103388);">
+          ✍️ Fill Form → Get Messages
+          <span class="btn-sub">Slack + SNOW to user + SNOW Note</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- UTILITIES -->
+    <div class="menu-section">
+      <div class="menu-section-title">🛠️ Utilities</div>
+      <div class="menu-grid-3">
+        <button class="btn" onclick="showContactLog()">
+          📝 Contact Log
+          <span class="btn-sub">2nd / 3rd</span>
+        </button>
+        <button class="btn" onclick="showPassword()">
+          🔑 Password
+          <span class="btn-sub">Reset flow</span>
+        </button>
+        <button class="btn" onclick="showSlackSummary()">
+          📣 Help Chat
+          <span class="btn-sub">#help-it/stores</span>
+        </button>
+      </div>
+    </div>
+  </div><!-- end viewMenu -->
+
+  <!-- SYSTEM SELECT VIEW -->
+  <div id="viewSystem" class="hidden">
+    <div class="section-header">
+      <span class="section-title" id="systemViewTitle">Select System</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div id="systemCategory" class="hidden" style="margin-bottom:8px;"></div>
+    <div id="systemList"></div>
+  </div>
+
+  <!-- FORM VIEW -->
+  <div id="viewForm" class="hidden">
+    <div class="section-header">
+      <div>
+        <span class="section-title" id="formTitle">Form</span>
+        <span id="formSystem" style="font-size:11px;color:var(--text3);margin-left:6px;"></span>
+      </div>
+      <button class="btn-back" id="formBackBtn" onclick="goBack()">← Back</button>
+    </div>
+    <div id="resolutionHint" class="resolution-hint hidden"></div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="langEs" onclick="setLang('es')">🇲🇽 ES</button>
+      <button class="lang-btn" id="langEn" onclick="setLang('en')">🇺🇸 EN</button>
+    </div>
+    <div id="formFields"></div>
+    <button class="btn-generate" onclick="generateOutput()">⚡ Generate Messages</button>
+  </div>
+
+  <!-- OUTPUT VIEW -->
+  <div id="viewOutput" class="hidden">
+    <div class="section-header">
+      <span class="section-title" id="outputTitle">Output</span>
+      <div style="display:flex;gap:5px;">
+        <button class="btn-back" onclick="goTo('form')">✏️ Edit</button>
+        <button class="btn-back" onclick="goMenu()">🔄 New</button>
+      </div>
+    </div>
+    <div id="outputBlocks"></div>
+  </div>
+
+  <!-- PREBUILT NOTES VIEW -->
+  <div id="viewPrebuilt" class="hidden">
+    <div class="section-header">
+      <span class="section-title">📋 Pre-built SNOW Notes</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <p style="font-size:10px;color:var(--text3);margin-bottom:10px;">Customer issues reported by agents</p>
+    <div id="prebuiltList"></div>
+    <div id="prebuiltDetail" class="hidden"></div>
+  </div>
+
+  <!-- ONBOARDING VIEW -->
+  <div id="viewOnboarding" class="hidden">
+    <div class="section-header">
+      <span class="section-title">👤 Onboarding / Offboarding</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div id="onboardingList"></div>
+  </div>
+
+  <!-- CONTACT LOG VIEW -->
+  <div id="viewContactLog" class="hidden">
+    <div class="section-header">
+      <span class="section-title">📝 Contact Log</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div class="time-display" id="timeDisplay"></div>
+    <div class="field">
+      <label>Contact #</label>
+      <select id="contactNum" onchange="updateContactLog()">
+        <option value="2nd Contact">2nd Contact</option>
+        <option value="3rd Contact">3rd Contact</option>
+      </select>
+    </div>
+    <div id="contactLogOutput"></div>
+  </div>
+
+  <!-- PASSWORD VIEW -->
+  <div id="viewPassword" class="hidden">
+    <div class="section-header">
+      <span class="section-title">🔑 Password Login Issue</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div id="passwordContent"></div>
+  </div>
+
+  <!-- SLACK SUMMARY VIEW -->
+  <div id="viewSlackSummary" class="hidden">
+    <div class="section-header">
+      <span class="section-title">📣 Slack Help Chat Summary</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <p style="font-size:10px;color:var(--text3);margin-bottom:10px;">For #help-it or #help-stores</p>
+    <div class="field"><label>Reference Ticket</label><input type="text" id="ss_ticket" placeholder="INC32165454" oninput="updateSlackSummary()"></div>
+    <div class="field"><label>Issue</label><input type="text" id="ss_issue" placeholder="Zeus is not opening" oninput="updateSlackSummary()"></div>
+    <div class="field"><label>Troubleshooting</label><textarea id="ss_ts" rows="2" placeholder="Cleared cookies & cache and Chrome restarted" oninput="updateSlackSummary()"></textarea></div>
+    <div class="field">
+      <label>Resolution</label>
+      <select id="ss_res" onchange="updateSlackSummary()">
+        <option value="">--</option>
+        <option>Resolved</option>
+        <option>Escalated to EUS</option>
+        <option>Escalated to App Team</option>
+        <option>Escalated to Backend</option>
+        <option>Escalated to L2</option>
+        <option>Escalated to Identity</option>
+        <option>Pending user response</option>
+        <option>Closed - Operations</option>
+      </select>
+    </div>
+    <div id="slackSummaryOutput"></div>
+  </div>
+
+  <!-- PROPER / CONVERT TICKET VIEW -->
+  <div id="viewProper" class="hidden">
+    <div class="section-header">
+      <span class="section-title">📐 Proper / KB Rules</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <p style="font-size:10px;color:var(--text3);margin-bottom:12px;">Select the conversion type needed</p>
+    <div id="properList"></div>
+    <div id="properDetail" class="hidden"></div>
+  </div>
+
+  <!-- MATRIX VIEW -->
+  <div id="viewMatrix" class="hidden">
+    <div class="section-header">
+      <span class="section-title">📊 Incident Standard Process</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div id="matrixContent"></div>
+  </div>
+
+  <!-- ZOOM INVITE VIEW -->
+  <div id="viewZoomInvite" class="hidden">
+    <div class="section-header">
+      <span class="section-title">📅 Zoom Invite</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div id="zoomInviteContent"></div>
+  </div>
+
+  <!-- SMART GENERATOR VIEW -->
+  <div id="viewSmartGen" class="hidden">
+    <div class="section-header">
+      <span class="section-title">🤖 Smart Generator</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div id="sgFormArea"></div>
+    <div id="sgOutputArea" class="hidden"></div>
+  </div>
+
+  <!-- PLACEHOLDER VIEW -->
+  <div id="viewPlaceholder" class="hidden">
+    <div class="section-header">
+      <span class="section-title" id="placeholderTitle">Coming Soon</span>
+      <button class="btn-back" onclick="goMenu()">← Menu</button>
+    </div>
+    <div style="background:var(--surface2);border:1px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;margin-top:8px;">
+      <div style="font-size:28px;margin-bottom:10px;">🚧</div>
+      <p style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:6px;">Esta sección estará disponible pronto</p>
+      <p style="font-size:11px;color:var(--text3);">Puedes agregar casos aquí siguiendo la estructura del código.<br>Usa Copilot o ChatGPT para agregarlo sin romper nada.</p>
+    </div>
+    <!-- ➕ AGREGA NUEVOS CASOS AQUÍ cuando esta sección esté lista -->
+  </div>
+
+  <div class="footer">ESD Generator v1 — Oportun MX · Jorge Eduardo Ayala Tamayo</div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const CASE_CATALOG = {
+  "Five9": {
+    tag: "agent",
+    problems: ["Clientes no me escuchan","Yo no escucho","Se pierde audio","Server connection lost","Me cambia a Not Ready","Se queda en blanco","No permite disposicionar","Five9 no abre","Llamadas se desconectan"],
+    steps_es: ["Cambiar diadema de puerto USB","Speedtest en www.speedtest.net + captura completa","Zscaler → Private Access → Connectivity (Service ON / Authenticated Yes) + captura","Zscaler 'More': Repair App / Restart Service / Update App / Update Policy","Borrar historial Chrome 'Todos los tiempos' → 'Mostrar más' → TODAS las casillas","Cerrar Chrome completamente","Abrir Five9 desde Okta (NO user/pass manual)","Validar audio input/output en Five9"],
+    steps_en: ["Switch headset to different USB port","Speed test at www.speedtest.net + full screenshot","Zscaler → Private Access → Connectivity (Service ON / Authenticated Yes) + screenshot","Zscaler 'More': Repair App / Restart Service / Update App / Update Policy","Clear Chrome history 'All time' → 'Show more' → ALL boxes","Close Chrome completely","Open Five9 from Okta (NO manual user/pass)","Validate audio input/output in Five9"],
+    resolution: "70% L1 (Zscaler + caché) / 30% escala", team: "App Team / Backend",
+  },
+  "Five9 - Estación Not Assigned": {
+    tag: "agent",
+    problems: ["Estación aparece Not Assigned","No puede tomar llamadas"],
+    steps_es: ["Reinicio de PC","Update Policy en Zscaler","Confirmar número de estación en fondo de escritorio","Captura donde se vea el número o 'Not Assigned'"],
+    steps_en: ["Restart PC","Update Policy in Zscaler","Confirm station number on desktop wallpaper","Screenshot showing number or 'Not Assigned'"],
+    resolution: "Normalmente escala (mapping backend)", team: "Backend / Five9 Admin",
+  },
+  "Five9 - Supervisor Dashboard": {
+    tag: "agent",
+    problems: ["No aparecen agentes","Filtros incorrectos tras update"],
+    steps_es: ["Limpiar caché","Cambiar rango a 'Today'","Validar rol Supervisor","Probar en incógnito"],
+    steps_en: ["Clear cache","Change range to 'Today'","Validate Supervisor role","Test in incognito"],
+    resolution: "Seguimiento / Escala si post-update", team: "Five9 Admin",
+  },
+  "ZEUS": {
+    tag: "agent",
+    problems: ["Tarda en abrir cuenta","Blank screen","Unknown server error","ZEUS lento","No carga información"],
+    steps_es: ["Speedtest + captura","Zscaler → Connectivity (ON / Authenticated Yes) + captura","Zscaler More: Repair / Restart / Update App / Update Policy","Borrar historial Chrome 'Todos los tiempos' + Avanzado + TODAS","Cerrar Chrome completamente","Reingreso desde Okta"],
+    steps_en: ["Speed test + screenshot","Zscaler → Connectivity (ON / Authenticated Yes) + screenshot","Zscaler More: Repair / Restart / Update App / Update Policy","Clear Chrome history 'All time' + Advanced + ALL boxes","Close Chrome completely","Re-login from Okta"],
+    resolution: "60% red/Zscaler / 40% escala", team: "App Team / Backend",
+  },
+  "ZEUS - Pre-Approval": {
+    tag: "agent",
+    problems: ["No podemos ejecutar su pre-aprobación","Se queda cargando"],
+    steps_es: ["Borrar historial Chrome","Probar en otro PC","Reingreso vía Okta"],
+    steps_en: ["Clear Chrome history","Try on another PC","Re-login via Okta"],
+    resolution: "90% escala (backend decision engine)", team: "App Team / Backend",
+  },
+  "ZEUS - Dirección/VIN/Co-Applicant": {
+    tag: "ops",
+    problems: ["Non-processable","VIN mismatch","Co-applicant required"],
+    steps_es: ["Validación operativa (no es issue técnico)"],
+    steps_en: ["Operational validation (not a technical issue)"],
+    resolution: "NO es issue técnico — cierre operativo", team: "N/A — Operaciones",
+  },
+  "Cresta": {
+    tag: "agent",
+    problems: ["No transcribe","No detecta micrófono","Cresta no detecta voz"],
+    steps_es: ["Validar micrófono en Config Windows","Permisos de micrófono en Chrome","Speedtest + captura","Zscaler → Connectivity + captura","Zscaler More: Repair / Restart / Update App / Update Policy","Borrar historial Chrome","Cerrar Chrome completamente","Reingreso desde Okta a Cresta"],
+    steps_en: ["Validate microphone in Windows Settings","Chrome microphone permissions","Speed test + screenshot","Zscaler → Connectivity + screenshot","Zscaler More: Repair / Restart / Update App / Update Policy","Clear Chrome history","Close Chrome completely","Re-login from Okta to Cresta"],
+    resolution: "50% config local / 50% escala", team: "App Team",
+  },
+  "Online Account (OA)": {
+    tag: "customer",
+    problems: ["Password reset pero login incorrecto","Sorry you have been blocked","No ve loan actual","Login pero no muestra préstamo","Email asociado a 2 clientes"],
+    steps_es: ["Borrar historial/cookies","Confirmar ACCOUNT STATUS = ACTIVE","Re-link mobile account","Password reset","Probar en incógnito","Reinstalar app"],
+    steps_en: ["Clear history/cookies","Confirm ACCOUNT STATUS = ACTIVE","Re-link mobile account","Password reset","Test in incognito","Reinstall app"],
+    resolution: "Escala frecuente (sync / auth / security flag)", team: "Backend / OA Team",
+  },
+  "OA - Verificación SMS": {
+    tag: "customer",
+    problems: ["No llega segundo código","No pending verifications","Error al enviar código","Teléfono no persiste en Contact Info"],
+    steps_es: ["Verificar status (Approved / Pre-Approved)","Confirmar número correcto","Confirmar carrier","Reenvío de link","Limpiar caché","Probar otro navegador"],
+    steps_en: ["Verify status (Approved / Pre-Approved)","Confirm correct number","Confirm carrier","Resend link","Clear cache","Try different browser"],
+    resolution: "Casi siempre escala (OTP backend)", team: "App Team / Backend",
+  },
+  "Oportun App - Document Upload": {
+    tag: "customer",
+    problems: ["Pantalla en blanco","No podemos subir documentos","Botones no aparecen"],
+    steps_es: ["Probar en Chrome y otros navegadores","Limpiar caché/cookies","Cerrar sesiones","Reenviar link"],
+    steps_en: ["Test in Chrome and other browsers","Clear cache/cookies","Close sessions","Resend link"],
+    resolution: "Escala backend (UI rendering)", team: "App Team / Backend",
+  },
+  "Payments / PNM / rACH": {
+    tag: "customer",
+    problems: ["ACH DECLINED con null","No permite pagar más del mínimo","Solo aparece CVS en barcode","Account is closed/complete"],
+    steps_es: ["Validar Egeon logs","Confirmar no es carrier issue","Confirmar canal digital","Validar comportamiento previo","Sin control L1"],
+    steps_en: ["Validate Egeon logs","Confirm not carrier issue","Confirm digital channel","Validate previous behavior","No L1 control"],
+    resolution: "95% escala (backend PNM / payment logic)", team: "PNM Team / Backend",
+  },
+  "Excel / O365": {
+    tag: "agent",
+    problems: ["Archivo se congela","Error memoria","Not enough memory or disk space"],
+    steps_es: ["Excel en Safe Mode (excel /safe)","Quick/Online Repair Office","OneDrive reconnect","Verificar espacio libre","Confirmar licencia E5","Sign out/in O365","Validar archivo local"],
+    steps_en: ["Excel Safe Mode (excel /safe)","Quick/Online Repair Office","OneDrive reconnect","Check free space","Confirm E5 license","Sign out/in O365","Validate file is local"],
+    resolution: "Escala a EUS (perfil/imagen)", team: "EUS",
+  },
+  "Okta / Outlook": {
+    tag: "agent",
+    problems: ["Invalid credentials","Password no sincroniza","Unable to access Outlook"],
+    steps_es: ["Validar Zscaler connectivity","Reinicio de PC","Confirmar login en web (Okta portal)","Zscaler basic TS + browser"],
+    steps_en: ["Validate Zscaler connectivity","Restart PC","Confirm web login (Okta portal)","Zscaler basic TS + browser"],
+    resolution: "A veces sync local / escala identity", team: "Identity / EUS",
+  },
+  "WVD / Azure": {
+    tag: "agent",
+    problems: ["No resources assigned"],
+    steps_es: ["Confirmar cuenta correcta","Probar en incógnito"],
+    steps_en: ["Confirm correct account","Test in incognito"],
+    resolution: "Escala provisioning", team: "Provisioning / Cloud",
+  },
+  "Windows / Hardware": {
+    tag: "agent",
+    problems: ["PC tarda 10+ min","Windows Search no abre","Monitor estática","Webcam no funciona","Cable pelado","Líneas colores","Hostname no aparece en fondo de escritorio","Número de estación no visible (Five9)"],
+    steps_es: ["Hardware reset 30s","Validar updates Windows","Cambiar cable/puerto","Probar sin hub","Reinicio","Confirmar hostname","Dell Update","Otro puerto USB/HDMI",
+      "— Cómo obtener Hostname (opción 1): This PC → Local Disk (C:) → zp → Desktopinfo → doble clic en 'Desktopinfo' → el hostname aparece en el fondo de escritorio",
+      "— Cómo obtener Hostname (opción 2): Windows Search → buscar 'computername' → seleccionar 'View your PC name' → copiar el campo 'Device name'",
+      "— Número de estación Five9 (Zoom): En la barra de búsqueda de Windows busca 'Zoom' → abre la app → el número de estación aparece en el título o perfil de Zoom"],
+    steps_en: ["Hardware reset 30s","Check Windows updates","Change cable/port","Test without hub","Restart","Confirm hostname","Dell Update","Try different USB/HDMI port",
+      "— How to get Hostname (option 1): This PC → Local Disk (C:) → zp → Desktopinfo → double-click 'Desktopinfo' → hostname appears on desktop wallpaper",
+      "— How to get Hostname (option 2): Windows Search → type 'computername' → select 'View your PC name' → copy the 'Device name' field",
+      "— Five9 Station Number (Zoom): Search 'Zoom' in Windows search bar → open app → station number appears in Zoom title or profile"],
+    resolution: "Casi siempre escala (reimage / EUS)", team: "EUS",
+  },
+  "Cambios Operativos": {
+    tag: "ops",
+    problems: ["Cambio de dirección sin proof","Corrección de apellido","Cambio de cuota"],
+    steps_es: ["Solicitar identificador","Redirigir a categoría correcta","Solicitar proof of address"],
+    steps_en: ["Request identifier","Redirect to correct category","Request proof of address"],
+    resolution: "Cierre / Redirección a nuevo ticket (REQ)", team: "N/A — Operaciones",
+  },
+};
+
+const OB_TEMPLATES = {
+  "✅ Onboarding — Okta": { color: "#ef4444", category: "onboarding", steps: ["User Information:","○ User Presence on OKTA: Confirmed","○ User Status: Active","○ Profile Source: Workday","✔ The user details have been verified","► TASK COMPLETE"] },
+  "✅ Onboarding — AD": { color: "#f59e0b", category: "onboarding", steps: ["User Information:","○ User Presence on AD: Confirmed","○ User Status: Active","✔ The user details have been verified","► TASK COMPLETE"] },
+  "✅ Onboarding — Loomis": { color: "#22c55e", category: "onboarding", steps: ["User Information:","○ ZEUS ID: ____","○ Store ID: ____","Troubleshoot steps:","○ We add the user on the store in loomis","○ We send PIN via Slack","► TASK COMPLETE"] },
+  "✅ Onboarding — Rehired": { color: "#06b6d4", category: "onboarding", steps: ["Troubleshoot steps:","○ User Presence on OKTA: Confirmed","○ User Status: Disabled","○ User Presence on AD: Confirmed","○ We check on Okta Admin and the user is unique and active","○ We check on AD and the user is unique and active","○ User Presence on Workday: Confirmed","○ We found the credentials in Outlook","► TASK COMPLETE"] },
+  "✅ Onboarding — Invalid HR": { color: "#f97316", category: "onboarding", steps: ["Troubleshoot steps:","○ effective onboarding date is less than 30 days","○ [email] found in Okta onboarding mail","○ We check on Okta Admin and the user is unique and active","○ We check on AD and the user is unique and active","○ We found the credentials in Outlook","► TASK COMPLETE"] },
+  "🚪 Offboarding — Okta": { color: "#ef4444", category: "offboarding", steps: ["User Information:","○ User Presence on OKTA: Confirmed","○ User Status: Disabled","✔ The user details have been verified","► TASK COMPLETE"] },
+  "🚪 Offboarding — AD": { color: "#f59e0b", category: "offboarding", steps: ["User Information:","○ User Presence on AD: Confirmed","○ User Status: Disabled","✔ The user details have been verified","► TASK COMPLETE"] },
+  "🚪 Offboarding — Encapture": { color: "#8b5cf6", category: "offboarding", steps: ["User Information:","○ User Presence on encapture: Confirmed","○ User Status: Active","○ We Clear the checkbox 'This user is active' and then click OK","✔ The user details have been verified","► TASK COMPLETE"] },
+  "📋 Documents Signed Error": { color: "#eab308", category: "special", steps: ["Customer information:","○ App ID:","○ Client ID:","Issue Summary:","○ The Customer can't continue with the app, it gives an error on Zeus error: Documents have been signed. No changes are allowed.","Troubleshoot steps:","○ We check the app on Zeus","○ We check that there is not recently disbursement + no recent disbursement","○ We move the app on Egeon","○ We check the app on Zeus = error Solved","► Error: Documents have been signed. No changes are allowed. = Issue Solved"] },
+};
+
+const PREBUILT_NOTES = {
+  "Do Not Email (DNE)": {
+    fields: [{ id: "email", label: "Customer Email", placeholder: "customer@email.com" }],
+    tag: "Customer Request",
+    template: (d) => `📋 Issue: Request: Do Not Email (DNE) for ${d.email||"xxxxx@xxxx.com"}\n\n• Customer Information:\n  ○ Email: ${d.email||"xxxxx@xxxx.com"}\n\n• Issue Summary:\n  ○ The customer has requested to set a "Do Not Email" (DNE) flag for their email address.\n\n• Troubleshoot Steps:\n  ○ Verified the email address provided: ${d.email||"xxxxx@xxxx.com"}\n  ○ Confirmed that the request aligns with internal policies and can proceed.\n\n► Escalation:\n🔷 Team, could you please assist with setting the "Do Not Email" (DNE) flag for the mentioned email address?\n\nBest regards,\nESD`,
+  },
+  "Unable to Activate SMS": {
+    fields: [{ id: "clientId", label: "Client ID", placeholder: "" }, { id: "loanId", label: "Loan ID", placeholder: "" }],
+    tag: "OA Issue",
+    template: (d) => `📋 Issue: Unable to Activate SMS for Customer\n\n• Customer Information:\n  ○ Client ID: ${d.clientId||""}\n  ○ Loan ID: ${d.loanId||""}\n\n• Issue Summary:\n  ○ The system indicates that the customer has opted out of receiving messages.\n  ○ Agent attempted to reactivate SMS notifications, system displays:\n    "We have received your request to opt out of messages. To reactivate, please call 855-488-6090."\n  ○ Customer restarted phone, issue persists.\n\n• Troubleshoot Steps:\n  ○ Verified SMS status in the system.\n  ○ Reactivated SMS messages — system reverted to opt-out immediately.\n  ○ Customer restarted phone — problem remained.\n\n► Issue persists despite all troubleshooting steps attempted.\n🔷 Team, could you please assist us with resolving this issue?\n\nBest regards,\nESD`,
+  },
+  "Unable to Process Payment (PNM)": {
+    fields: [{ id: "clientId", label: "Client ID", placeholder: "" }, { id: "loanId", label: "Loan ID", placeholder: "" }],
+    tag: "Payment Issue",
+    template: (d) => `📋 Issue: Unable to Process Payment via PayNearMe\n\n• Customer Information:\n  ○ Client ID: ${d.clientId||""}\n  ○ Loan ID: ${d.loanId||""}\n\n• Issue Summary:\n  ○ Customer attempted to make a payment using TDD on PayNearMe platform.\n  ○ Error: "This account is closed/complete and cannot be paid."\n  ○ Egeon shows recent ACH activations with NULL status.\n\n• Troubleshoot Steps:\n  ○ Verified error message on PayNearMe.\n  ○ Checked Egeon — ACH activations display NULL status.\n\n► Issue persists.\n🔷 Team, could you please assist us with resolving this issue?\n\nBest regards,\nESD`,
+  },
+  "Bank Account Connection": {
+    fields: [{ id: "clientId", label: "Client ID", placeholder: "" }],
+    tag: "Signing Issue",
+    template: (d) => `📋 Issue: Unable to Sign Due to Bank Account Connection Requirement\n\n• Customer Information:\n  ○ Client ID: ${d.clientId||""}\n\n• Issue Summary:\n  ○ Customer unable to complete signing — system requires bank account connection.\n  ○ Customer confirmed bank details were provided.\n\n• Troubleshoot Steps:\n  ○ Verified account status and signing flow.\n  ○ Confirmed bank information was submitted.\n  ○ Issue persists at the signing step.\n\n► Issue persists despite all troubleshooting steps attempted.\n🔷 Team, could you please assist us?\n\nBest regards,\nESD`,
+  },
+  "ITIN Error Blocking App": {
+    fields: [{ id: "appId", label: "App ID", placeholder: "" }, { id: "clientId", label: "Client ID", placeholder: "" }],
+    tag: "App Error",
+    template: (d) => `📋 Issue: Invalid ITIN Error Blocking Application Progress\n\n• Customer Information:\n  ○ App ID: ${d.appId||"[Pending]"}\n  ○ Client ID: ${d.clientId||"[Pending]"}\n\n• Issue Summary:\n  ○ Invalid ITIN error preventing further progress in the application.\n\n• Troubleshoot Steps:\n  ○ Verified ITIN format (9-digit IRS number, starts with 9, 4th digit is 7 or 8).\n  ○ Cleared browsing history, reopened browser.\n  ○ Error persists — provided instructions for new ticket with screenshot.\n\n► Resolution: Ticket closed after instructions provided.\n\nBest regards,\nESD`,
+  },
+  "Application Name Change": {
+    fields: [{ id: "applicationId", label: "Application ID", placeholder: "" }, { id: "oldName", label: "Old Name", placeholder: "" }, { id: "newName", label: "New Name", placeholder: "" }],
+    tag: "Name Change",
+    template: (d) => `📋 Issue: Application Name Change\n\n• Customer Information:\n  ○ Application ID: ${d.applicationId||""}\n\n• Issue Summary:\n  ○ Name change requested for application.\n  ○ Updated application name to match client ID.\n  ○ Changed on Egeon from ${d.oldName||"OLD_NAME"} to ${d.newName||"NEW_NAME"}\n\n• Resolution:\n  ○ Application name successfully updated.\n\n► Status: Issue resolved. Ticket closed.\n\nBest regards,\nESD`,
+  },
+  "Outlook License E1": {
+    fields: [],
+    tag: "License Issue",
+    template: () => `📋 Issue: Outlook Access Issue\n\n• Issue Summary:\n  ○ User reported being unable to access Outlook.\n\n• Troubleshoot Steps:\n  ○ Basic Troubleshoot: Zscaler and browser — error persisted.\n  ○ License Adjustment: User had APP-O365-License-E1.\n    Removed and added APP-O365-License-E1-NoTeams from Okta Admin.\n    Awaiting replication in O365 Admin.\n\n• Resolution:\n  ○ User confirmed issue resolved. Ticket closed.\n\n► Issue resolved. Ticket closed.\n\nBest regards,\nESD`,
+  },
+  "Error ACH": {
+    fields: [{ id: "loanId", label: "Loan ID", placeholder: "" }, { id: "clientId", label: "Client ID", placeholder: "" }, { id: "mobileEmail", label: "Mobile Account Email", placeholder: "" }],
+    tag: "Payment Error",
+    template: (d) => `📋 Error ACH\n\n• Customer Information:\n  ○ Loan ID: ${d.loanId||""}\n  ○ Client ID: ${d.clientId||""}\n  ○ Mobile Account Email: ${d.mobileEmail||""}\n\n• Issue Summary:\n  ○ Customer tried to make payment over phone — agent received error too.\n\n► Error Message: "Unable to process ACH payment: Your payment could not be processed"\n\n🔷 Team, could you please help us?\n\nBest regards,\nESD`,
+  },
+  "Error Stuck in Verified Status": {
+    fields: [{ id: "appId", label: "App ID", placeholder: "" }],
+    tag: "Zeus Error",
+    template: (d) => `📋 Error Stuck in Verified Status\n\n• Customer Information:\n  ○ App ID: ${d.appId||""}\n\n• Issue Summary:\n  ○ Application submitted and still in Stuck in Verified Status.\n\n• Troubleshoot Steps:\n  ○ Checked on Zeus — app still on Stuck in Verified Status.\n\n► Error: App Stuck in Verified Status\n\n🔷 Team, could you please help us?\n\nBest regards,\nESD`,
+  },
+  "Credit Bureau Blocked (Zeus)": {
+    fields: [{ id: "tktNo", label: "Ticket Number", placeholder: "INC0000000" }, { id: "clientId", label: "Client ID", placeholder: "" }],
+    tag: "Zeus / Customer",
+    template: (d) => `Hello!\n\nI am writing to you from Enterprise Service Desk regarding ticket "${d.tktNo||"INCxxxxxxx"}".\n\nThere is nothing we can do to unblock it and continue with the application.\nThe customer has to call the credit bureau and ask to be unblocked.\nAfter this is done, we have to cancel the application and start a new one so that Zeus is allowed to run score.\n\n---\n\n¡Hola!\n\nLe escribo desde Enterprise Service Desk en relación con el ticket "${d.tktNo||"INCxxxxxxx"}".\n\nNo podemos hacer nada para desbloquearlo y continuar con la solicitud.\nEl cliente tiene que llamar a la agencia de crédito y pedir que se desbloquee.\nDespués de esto se realiza, tenemos que cancelar la aplicación y empezar uno nuevo para que Zeus se le permite ejecutar puntuación.\n\nBest regards,\nESD`,
+  },
+  "Document Signature Type Change": {
+    fields: [{ id: "tktNo", label: "Ticket Number", placeholder: "INCxxxx" }, { id: "clientId", label: "Client ID", placeholder: "" }],
+    tag: "Zeus / Signing",
+    template: (d) => `Hello there,\n\nTe escribo en relación con el ticket ${d.tktNo||"INCxxxx"}.\n\nCambiamos la opción de "Document Signature Type" de "Sign at store" a la opción correcta.\n\nPor favor, pídele al cliente que intente firmar de nuevo y, si el problema persiste, que pruebe lo siguiente:\n• Borrar historial y cookies del navegador\n• Cerrar sesión y reingresar\n• Probar en modo incógnito\n\nIf issue is still occurring, please let us know.\n\nBest regards,\nESD`,
+  },
+  "Error Mail by Check Disbursement": {
+    fields: [{ id: "appId", label: "App ID", placeholder: "" }, { id: "clientId", label: "Client ID", placeholder: "" }, { id: "mobileEmail", label: "Mobile Account Email", placeholder: "" }],
+    tag: "Disbursement Error",
+    template: (d) => `📋 Error mail by check disbursement\n\n• Customer Information:\n  ○ App ID: ${d.appId||""}\n  ○ Client ID: ${d.clientId||""}\n  ○ Mobile Account Email: ${d.mobileEmail||""}\n\n• Issue Summary:\n  ○ Despite selecting mail by check disbursement, app is not processing.\n\n• Troubleshoot Steps:\n  ○ Has iPhone device with Safari\n  ○ Downloaded and installed Chrome\n  ○ Cleared history and tried again — error\n  ○ Tried from oportun.com — error persists\n  ○ No other device available\n\n► Error: Can't sign Online, mail by check disbursement.\n\n🔷 Team, could you please help us?\n\nBest regards,\nESD`,
+  },
+};
+
+const PASSWORD_FLOW = {
+  steps: [
+    "Password Reset: Initial password reset performed and shared via phone/Slack.",
+    "User reported password did not work.",
+    "Generated a New Password: New password generated and shared via Slack.",
+    "User reported being unable to log in again.",
+    "Verification: Ensured password was entered correctly by user.",
+    "User finally able to log in — prompted by Windows to change password.",
+    "Password Change: User successfully changed password when prompted.",
+    "User able to log in successfully after changing password.",
+    "Functionality Testing: Tested new password on three different PCs.",
+    "Confirmed new password works on all tested PCs.",
+  ],
+  note: `📋 Password Login Issue\n\n• Issue Summary:\n  ○ User unable to log in with newly reset password.\n\n• Troubleshoot Steps:\n  ○ Password Reset: Initial password reset performed and shared via phone.\n    User reported the password did not work.\n  ○ Generated a New Password: Shared via Slack.\n    User reported being unable to log in again.\n  ○ Verification: Ensured password entered correctly.\n    User finally able to log in — prompted by Windows to change password.\n  ○ Password Change: User successfully changed password when prompted.\n    User able to log in successfully after changing.\n  ○ Functionality Testing: Tested on three different PCs.\n    Confirmed new password works on all.\n\n► Issue solved.\n\nBest regards,\nESD`,
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  action: null,
+  system: null,
+  lang: 'es',
+  context: null, // 'customer' or null
+  fields: {},
+};
+
+function resetState() {
+  state = { action: null, system: null, lang: 'es', context: null, fields: {} };
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+const VIEWS = ['viewMenu','viewSystem','viewForm','viewOutput','viewPrebuilt','viewOnboarding','viewContactLog','viewPassword','viewSlackSummary','viewProper','viewMatrix','viewPlaceholder'];
+
+function showView(id) {
+  VIEWS.forEach(v => document.getElementById(v).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.getElementById('searchResults').classList.add('hidden');
+  document.getElementById('globalSearch').value = '';
+}
+
+function goMenu() { resetState(); showView('viewMenu'); }
+
+function goTo(target, action, context) {
+  if (action) state.action = action;
+  if (context) state.context = context;
+
+  if (target === 'system') {
+    renderSystemList();
+    showView('viewSystem');
+  } else if (target === 'form') {
+    renderForm();
+    showView('viewForm');
+  } else if (target === 'output') {
+    renderOutput();
+    showView('viewOutput');
+  }
+}
+
+function goBack() {
+  if (state.action === 'hardware') goMenu();
+  else { renderSystemList(); showView('viewSystem'); }
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+// Build a flat keyword index
+const SEARCH_INDEX = [];
+
+// Index systems
+Object.entries(CASE_CATALOG).forEach(([sys, data]) => {
+  SEARCH_INDEX.push({
+    type: 'system',
+    title: sys,
+    keywords: [sys.toLowerCase(), ...data.problems.map(p => p.toLowerCase()), data.tag],
+    preview: data.problems.slice(0,2).join(' · '),
+    action: () => { state.action = 'primer_contacto'; state.system = sys; renderForm(); showView('viewForm'); }
+  });
+});
+
+// Index prebuilt notes
+Object.entries(PREBUILT_NOTES).forEach(([name, data]) => {
+  SEARCH_INDEX.push({
+    type: 'prebuilt',
+    title: name,
+    keywords: [name.toLowerCase(), data.tag.toLowerCase()],
+    preview: data.tag,
+    action: () => { showPrebuilt(); renderPrebuiltDetail(name); }
+  });
+});
+
+// Index OB templates
+Object.entries(OB_TEMPLATES).forEach(([name, data]) => {
+  SEARCH_INDEX.push({
+    type: 'template',
+    title: name,
+    keywords: [name.toLowerCase(), data.category],
+    preview: data.steps[0],
+    action: () => { showOnboarding(); }
+  });
+});
+
+// Index actions
+[
+  { title: 'Escalation Note', keywords: ['escalat','escala','escalar','escalamiento'], preview: 'SNOW technical escalation note', action: () => goTo('system','escalamiento') },
+  { title: 'Closure Note', keywords: ['cierre','closure','close','resolved','resuelto'], preview: 'Issue resolved SNOW note', action: () => goTo('system','cierre') },
+  { title: 'Contact Log', keywords: ['contact log','segundo','third','2nd','3rd'], preview: '2nd / 3rd contact log', action: () => showContactLog() },
+  { title: 'Password Reset', keywords: ['password','contraseña','reset','login'], preview: 'Password login issue flow', action: () => showPassword() },
+  { title: 'Proper / Convert Ticket', keywords: ['proper','convert','request','incident','access request','cancelar','cancelamos'], preview: 'Convert REQ ↔ INC · Applications Access', action: () => showProper() },
+  { title: 'Follow-up Matrix', keywords: ['follow up','matrix','warning script','closing script','escalate','loomis','zeus missing'], preview: 'Incident process · Warning · Closing scripts', action: () => showMatrix() },
+  { title: 'Onboarding', keywords: ['onboarding','new user','nuevo usuario','okta','workday'], preview: 'Onboarding task templates', action: () => showOnboarding() },
+  { title: 'Offboarding', keywords: ['offboarding','disable','deshabilitar','termination'], preview: 'Offboarding task templates', action: () => showOnboarding() },
+].forEach(item => SEARCH_INDEX.push({ type: 'action', ...item }));
+
+function handleSearch(query) {
+  const q = query.trim().toLowerCase();
+  const resultsDiv = document.getElementById('searchResults');
+  
+  if (q.length < 2) {
+    resultsDiv.classList.add('hidden');
+    resultsDiv.innerHTML = '';
+    return;
+  }
+
+  const results = SEARCH_INDEX.filter(item =>
+    item.keywords.some(kw => kw.includes(q)) || item.title.toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (results.length === 0) {
+    resultsDiv.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:8px;">No results for "${query}"</div>`;
+  } else {
+    resultsDiv.innerHTML = results.map((r, i) => `
+      <div class="search-result-item" onclick="searchResultClick(${i})">
+        <div class="search-result-category">${r.type}</div>
+        <div class="search-result-title">${highlightMatch(r.title, q)}</div>
+        <div class="search-result-preview">${r.preview}</div>
+      </div>
+    `).join('');
+    window._searchResults = results;
+  }
+  resultsDiv.classList.remove('hidden');
+}
+
+function highlightMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query);
+  if (idx === -1) return text;
+  return text.slice(0, idx) + `<span class="highlight">${text.slice(idx, idx + query.length)}</span>` + text.slice(idx + query.length);
+}
+
+function searchResultClick(idx) {
+  window._searchResults[idx].action();
+}
+
+// ============================================================
+// SYSTEM LIST
+// ============================================================
+function renderSystemList() {
+  const title = document.getElementById('systemViewTitle');
+  const list = document.getElementById('systemList');
+  const catDiv = document.getElementById('systemCategory');
+  
+  const actionLabels = {
+    'primer_contacto': '📨 First Contact',
+    'troubleshooting': '🔧 Troubleshooting',
+    'escalamiento': '⬆️ Escalation Note',
+    'cierre': '✅ Closure Note',
+    'cierre_slack': '✅ Closure Message',
+    'no_es_issue': '🚫 Not an Issue',
+    'no_es_issue_slack': '🚫 Not an Issue (Slack)',
+    'hardware': '🖥️ Hardware',
+  };
+  
+  title.textContent = actionLabels[state.action] || 'Select System';
+  
+  if (state.context === 'customer') {
+    catDiv.innerHTML = '<span class="badge badge-customer">Customer Issue via Agent</span>';
+    catDiv.classList.remove('hidden');
+  } else {
+    catDiv.classList.add('hidden');
+  }
+
+  // Filter systems based on action + context
+  let systems = Object.keys(CASE_CATALOG);
+
+  if (state.action === 'hardware') {
+    // Hardware Note: only Windows/Hardware system
+    systems = systems.filter(s => s === 'Windows / Hardware');
+  } else if (['no_es_issue','no_es_issue_slack','cierre','cierre_slack'].includes(state.action)) {
+    // Closure / Not an Issue: all systems available
+    if (state.context === 'customer') {
+      systems = systems.filter(s => CASE_CATALOG[s].tag === 'customer' || CASE_CATALOG[s].tag === 'ops');
+    }
+    // agent context: all tags visible
+  } else {
+    // Escalation / First Contact / Troubleshooting: NO ops systems
+    systems = systems.filter(s => CASE_CATALOG[s].tag !== 'ops');
+    if (state.context === 'customer') {
+      systems = systems.filter(s => CASE_CATALOG[s].tag === 'customer');
+    }
+  }
+
+  list.innerHTML = systems.map(s => {
+    const tag = CASE_CATALOG[s].tag;
+    const badgeClass = tag === 'customer' ? 'badge-customer' : tag === 'ops' ? 'badge-ops' : 'badge-agent';
+    const badgeLabel = tag === 'customer' ? 'customer' : tag === 'ops' ? 'ops' : 'agent';
+    return `
+      <button class="btn" style="margin-bottom:5px;" onclick="selectSystem('${s}')">
+        <div class="system-item">
+          <div>
+            <span>${s}</span>
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+          </div>
+          <span class="problems-count">${CASE_CATALOG[s].problems.length}p →</span>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  // If hardware action, skip system select
+  if (state.action === 'hardware') {
+    state.system = null;
+    renderForm();
+    showView('viewForm');
+  }
+}
+
+function selectSystem(sys) {
+  state.system = sys;
+  renderForm();
+  showView('viewForm');
+}
+
+// ============================================================
+// FORM
+// ============================================================
+function renderForm() {
+  const formTitle = document.getElementById('formTitle');
+  const formSystem = document.getElementById('formSystem');
+  const formFields = document.getElementById('formFields');
+  const resHint = document.getElementById('resolutionHint');
+  
+  const caseData = state.system ? CASE_CATALOG[state.system] : null;
+
+  const actionLabels = {
+    'primer_contacto': '📨 First Contact',
+    'troubleshooting': '🔧 Troubleshooting',
+    'escalamiento': '⬆️ Escalation Note',
+    'cierre': '✅ Closure Note',
+    'cierre_slack': '✅ Closure Message',
+    'no_es_issue': '🚫 Not an Issue',
+    'no_es_issue_slack': '🚫 Not an Issue (Slack)',
+    'hardware': '🖥️ Hardware',
+  };
+
+  formTitle.textContent = actionLabels[state.action] || 'Form';
+  formSystem.textContent = state.system ? `· ${state.system}` : '';
+
+  if (caseData) {
+    resHint.textContent = `💡 ${caseData.resolution} → ${caseData.team}`;
+    resHint.classList.remove('hidden');
+  } else {
+    resHint.classList.add('hidden');
+  }
+
+  // Update lang buttons
+  document.getElementById('langEs').className = 'lang-btn' + (state.lang === 'es' ? ' active' : '');
+  document.getElementById('langEn').className = 'lang-btn' + (state.lang === 'en' ? ' active' : '');
+
+  let html = '';
+
+  // Common fields
+  html += field('ticket', 'Ticket', 'text', 'INC/REQ0012345');
+  html += field('user', 'User (@Slack)', 'text', 'nombre.apellido');
+
+  if (caseData?.problems?.length > 0) {
+    html += fieldSelect('problem', 'Problem', [...caseData.problems, 'Otro']);
+  }
+  if (!caseData || state.fields.problem === 'Otro') {
+    html += field('problemM', 'Problem (manual)', 'text', 'Describe the issue');
+  }
+
+  html += field('detail', 'Detail / Error', 'textarea', 'Exact error message');
+  html += field('hostname', 'Hostname', 'text', 'MX3909MZ');
+
+  // Action-specific fields
+  if (state.action === 'escalamiento') {
+    html += field('impact', 'Impact', 'text', 'User cannot proceed...');
+    html += field('appId', 'App ID', 'text', '');
+    html += field('clientId', 'Client ID', 'text', '');
+    html += field('loanId', 'Loan ID', 'text', '');
+    html += field('tsRealizado', 'TS Performed', 'textarea', 'Steps done');
+    html += field('resultadoTS', 'TS Result', 'text', 'Issue persists');
+    html += fieldSelect('alcance', 'Scope', ['1 usuario','Múltiples','Toda campaña','Toda tienda']);
+    html += field('requestTeam', 'Escalate to Team', 'text', caseData?.team || 'App Team');
+    html += fieldSelect('notas_eus', 'EUS Notes', ['No','Sí']);
+    html += field('kbRef', 'KB / Coda (optional)', 'text', 'KB0012345 / Coda link');
+  }
+
+  if (state.action === 'no_es_issue' || state.action === 'no_es_issue_slack') {
+    html += field('situacion', 'Situation', 'textarea', '');
+    html += field('instruccion', 'Instruction / Next Steps', 'textarea', '');
+    html += field('links', 'Links', 'text', '');
+    html += field('kbRef', 'KB / Coda (optional)', 'text', 'KB0012345 / Coda link');
+  }
+
+  if (state.action === 'cierre' || state.action === 'cierre_slack') {
+    html += field('resumen', 'Summary', 'textarea', '');
+    html += field('causaRaiz', 'Root Cause', 'text', '');
+    html += field('acciones', 'Actions Taken', 'textarea', '');
+    html += field('resultado', 'Result', 'text', '');
+    html += field('kbRef', 'KB / Coda (optional)', 'text', 'KB0012345 / Coda link');
+  }
+
+  if (state.action === 'hardware') {
+    html += fieldSelect('equipo', 'Equipment', ['Laptop','Monitor','Hub','Mouse','Charger','Webcam','Yubikey','Cable','Diadema']);
+    html += field('sintoma', 'Symptom', 'text', 'static / not working');
+    html += fieldSelect('seguridad', 'Safety Risk?', ['No','Sí (cable expuesto)','Sí (otro)']);
+    html += fieldSelect('location', 'Location', ['Casa/WFH','Sitio/Onsite','Tienda/Store']);
+    html += field('tsRealizado', 'TS Done', 'text', '');
+    html += fieldSelect('solicitud', 'Request', ['Reemplazo','Revisión','Onsite']);
+    html += field('kbRef', 'KB / Coda (optional)', 'text', 'KB0012345 / Coda link');
+  }
+
+  formFields.innerHTML = html;
+
+  // Restore saved field values
+  Object.entries(state.fields).forEach(([k, v]) => {
+    const el = document.getElementById('field_' + k);
+    if (el) el.value = v;
+  });
+}
+
+function field(id, label, type = 'text', placeholder = '') {
+  if (type === 'textarea') {
+    return `<div class="field"><label>${label}</label><textarea id="field_${id}" rows="2" placeholder="${placeholder}" oninput="saveField('${id}',this.value)">${state.fields[id]||''}</textarea></div>`;
+  }
+  return `<div class="field"><label>${label}</label><input type="text" id="field_${id}" placeholder="${placeholder}" value="${state.fields[id]||''}" oninput="saveField('${id}',this.value)"></div>`;
+}
+
+function fieldSelect(id, label, options) {
+  const opts = options.map(o => `<option value="${o}" ${state.fields[id]===o?'selected':''}>${o}</option>`).join('');
+  return `<div class="field"><label>${label}</label><select id="field_${id}" onchange="saveField('${id}',this.value)"><option value="">--</option>${opts}</select></div>`;
+}
+
+function saveField(key, value) {
+  state.fields[key] = value;
+  // Re-render form fields if 'Otro' toggled
+  if (key === 'problem') renderForm();
+}
+
+function setLang(lang) {
+  state.lang = lang;
+  document.getElementById('langEs').className = 'lang-btn' + (lang === 'es' ? ' active' : '');
+  document.getElementById('langEn').className = 'lang-btn' + (lang === 'en' ? ' active' : '');
+}
+
+function generateOutput() {
+  renderOutput();
+  showView('viewOutput');
+}
+
+// ============================================================
+// OUTPUT BUILDERS
+// ============================================================
+function renderOutput() {
+  const f = state.fields;
+  const caseData = state.system ? CASE_CATALOG[state.system] : null;
+  const es = state.lang === 'es';
+  const action = state.action;
+  const prob = f.problem === 'Otro' ? f.problemM : f.problem;
+  const d = { ...f, problem: prob, caseData, lang: state.lang, action, system: state.system };
+
+  const actionLabels = {
+    'primer_contacto': '📨 First Contact',
+    'troubleshooting': '🔧 Troubleshooting',
+    'escalamiento': '⬆️ Escalation Note',
+    'cierre': '✅ Closure Note',
+    'cierre_slack': '✅ Closure Message',
+    'no_es_issue': '🚫 Not an Issue',
+    'no_es_issue_slack': '🚫 Not an Issue (Slack)',
+    'hardware': '🖥️ Hardware',
+  };
+
+  document.getElementById('outputTitle').textContent = actionLabels[action] || 'Output';
+
+  const blocks = [];
+
+  if (caseData) {
+    blocks.push({ label: '💡 Resolution Hint', tag: 'note', tag_class: 'output-tag-note', content: `${caseData.resolution}\n→ Escalate to: ${caseData.team}` });
+  }
+
+  // Determine which outputs to generate based on action
+  const slackActions = ['primer_contacto','troubleshooting','cierre_slack','no_es_issue_slack','hardware'];
+  const snowUserActions = ['primer_contacto','troubleshooting'];
+  const snowNoteActions = ['escalamiento','cierre','no_es_issue','hardware'];
+
+  if (slackActions.includes(action)) {
+    const slackContent = buildSlack(d);
+    if (slackContent) blocks.push({ label: '💬 Slack Message', tag: 'SLACK', tag_class: 'output-tag-slack', content: slackContent });
+  }
+
+  if (snowUserActions.includes(action)) {
+    const snowUserContent = buildSNOWUser(d);
+    if (snowUserContent) blocks.push({ label: '📧 SNOW → User (Email)', tag: 'SNOW USER', tag_class: 'output-tag-snow', content: snowUserContent });
+  }
+
+  if (snowNoteActions.includes(action)) {
+    const snowNoteContent = buildSNOWNote(d);
+    if (snowNoteContent) blocks.push({ label: '📋 SNOW Internal Note (EN)', tag: 'SNOW NOTE', tag_class: 'output-tag-note', content: snowNoteContent });
+  }
+
+  // For troubleshooting, also show SNOW note
+  if (action === 'troubleshooting') {
+    const snowNoteContent = buildSNOWNote({ ...d, action: 'escalamiento' });
+    if (snowNoteContent) blocks.push({ label: '📋 SNOW Internal Note (EN)', tag: 'SNOW NOTE', tag_class: 'output-tag-note', content: snowNoteContent });
+  }
+
+  document.getElementById('outputBlocks').innerHTML = blocks.map((b, i) => `
+    <div class="output-block">
+      <div class="output-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="output-title">${b.label}</span>
+          <span class="output-tag ${b.tag_class}">${b.tag}</span>
+        </div>
+        <button class="copy-btn" id="copyBtn${i}" onclick="copyOutput(${i},'${encodeURIComponent(b.content)}')">Copy</button>
+      </div>
+      <pre class="output-pre">${escHtml(b.content)}</pre>
+    </div>
+  `).join('');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyOutput(idx, encoded) {
+  const text = decodeURIComponent(encoded);
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn' + idx);
+    btn.textContent = '✓ Copied';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1500);
+  });
+}
+
+// ============================================================
+// MESSAGE BUILDERS
+// ============================================================
+function buildSlack(f) {
+  const { action, lang, system, problem, detail, caseData } = f;
+  const es = lang === 'es';
+  const tag = f.user ? `@${f.user}` : '@user';
+  const tRef = f.ticket || 'INC/REQXXXXXXX';
+  const steps = caseData ? (es ? caseData.steps_es : caseData.steps_en) : [];
+  const nums = ['one','two','three','four','five','six','seven','eight','nine','keycap_ten'];
+  const stepsF = steps.map((s,i) => `:${nums[i]||(i+1)}: ${s}`).join('\n');
+  const footer = es
+    ? `\n\n:warning: Este es el primer contacto (hasta tres intentos, uno por día). Sin respuesta en 3 días hábiles, el ticket se cerrará.\n\n¡Gracias!\nBest regards,\nESD`
+    : `\n\n:warning: This is the first contact (up to 3 attempts, one per day). No response in 3 business days = auto-close.\n\nThank you!\nBest regards,\nESD`;
+
+  if (action === 'primer_contacto' || action === 'troubleshooting') {
+    const intro = es
+      ? `Te escribimos por el ticket :ticketsnow: ${tRef}, donde nos indicas que *${system||'el sistema'}* presenta: _${problem||'problema'}_.\n\n:question: ¿Podrías confirmarnos si el problema *sigue ocurriendo actualmente*?`
+      : `We're reaching out regarding ticket :ticketsnow: ${tRef}, where you reported that *${system||'the system'}* is experiencing: _${problem||'issue'}_.`;
+    const sb = steps.length
+      ? `\n\n${es?'✅ *Pasos de soporte (realiza exactamente estos):*':'✅ *Support steps (please follow exactly):*'}\n${stepsF}\n\n${es?'Si el issue *persiste* después de estos pasos, por favor indícanos para continuar con el siguiente nivel de soporte.':'If the issue *persists* after these steps, please let us know so we can continue with the next level of support.'}`
+      : `\n\n${es?':question: ¿El issue *sigue ocurriendo actualmente*? Por favor confírmanos para continuar.':':question: Is the issue *still occurring*? Please confirm so we can proceed.'}`;
+    return `${tag}\n${es?'Hola':'Hello there!'} :pika-wave:\n\n${intro}${detail?`\n\n:mag: ${es?'Detalle':'Detail'}: ${detail}`:''}${sb}${footer}`;
+  }
+
+  if (action === 'cierre_slack') {
+    return `${tag}\n${es?'Hola':'Hello there!'} :pika-wave:\n\n${es
+      ? `Te escribimos por el ticket :ticketsnow: ${tRef}.\n\n:white_check_mark: El issue ha sido *resuelto*.${f.resumen?`\n\n*Resumen:* ${f.resumen}`:''}${f.acciones?`\n*Acciones:* ${f.acciones}`:''}${f.resultado?`\n*Resultado:* ${f.resultado}`:''}`
+      : `Regarding ticket :ticketsnow: ${tRef}.\n\n:white_check_mark: Issue *resolved*.${f.resumen?`\n\n*Summary:* ${f.resumen}`:''}${f.acciones?`\n*Actions:* ${f.acciones}`:''}${f.resultado?`\n*Result:* ${f.resultado}`:''}`
+    }\n\n${es?'Si vuelve a ocurrir, abre un nuevo ticket.':'If it recurs, open a new ticket.'}\n\n${es?'¡Gracias!':'Thank you!'}\nBest regards,\nESD`;
+  }
+
+  if (action === 'no_es_issue_slack') {
+    return `${tag}\n${es?'Hola':'Hello there!'} :pika-wave:\n\n${es
+      ? `Te escribimos por el ticket :ticketsnow: ${tRef}.\n\nDespués de revisar, este tema *no corresponde a un issue técnico* sino a un *proceso de operaciones*.${f.situacion?`\n\n:mag: Lo que revisamos: ${f.situacion}`:''}${f.instruccion?`\n\n:point_right: *Próximos pasos:* ${f.instruccion}`:''}${f.links?`\n\n:link: ${f.links}`:''}\n\nProcederemos a *cerrar este ticket*.`
+      : `Regarding ticket :ticketsnow: ${tRef}.\n\nAfter reviewing, this is *not a technical issue* but an *operations process*.${f.situacion?`\n\n:mag: Reviewed: ${f.situacion}`:''}${f.instruccion?`\n\n:point_right: *Next steps:* ${f.instruccion}`:''}${f.links?`\n\n:link: ${f.links}`:''}\n\nWe will *close this ticket*.`
+    }\n\n${es?'¡Gracias!':'Thank you!'}\nBest regards,\nESD`;
+  }
+
+  if (action === 'hardware') {
+    return `${tag}\n${es?'Hola':'Hello there!'} :pika-wave:\n\n${es
+      ? `Te escribimos por el ticket :ticketsnow: ${tRef}, relacionado con tu *${f.equipo||'equipo'}*.`
+      : `Regarding ticket :ticketsnow: ${tRef}, related to your *${f.equipo||'equipment'}*.`
+    }\n\n${es?':question: Necesitamos:':':question: We need:'}\n:one: Hostname\n:two: ${es?'Captura/foto del problema':'Screenshot/photo of the issue'}\n:three: ${es?'Ubicación (casa/sitio/tienda)':'Location (home/onsite/store)'}${f.seguridad?.startsWith('Sí')?`\n\n:warning: *${es?'Riesgo de seguridad reportado':'Safety risk reported'}*`:''}\n${footer}`;
+  }
+
+  return '';
+}
+
+function buildSNOWUser(f) {
+  const es = f.lang === 'es';
+  const t = f.ticket || 'INC/REQXXXXXXX';
+  return `Subject: Follow-up on ${t} – ${f.system||'System'} ${f.problem||'issue'}\n\n${es?'Hola':'Hello'},\n\n${es
+    ? `Te escribimos por el ticket ${t}, donde reportas que ${f.system||'el sistema'} presenta: ${f.problem||'el problema'}.\n\nRealiza los pasos indicados en Slack y compártenos los resultados.\n\n¿El issue sigue ocurriendo actualmente? Por favor confírmanos para continuar.`
+    : `Regarding ticket ${t}, where you reported ${f.system||'the system'} is experiencing: ${f.problem||'the issue'}.\n\nPlease follow the Slack steps and share results.\n\nIs the issue still occurring? Please confirm so we can proceed.`
+  }\n\n${es
+    ? 'Este es el primer contacto (hasta 3 intentos, uno por día). Sin respuesta en 3 días hábiles, el ticket se cierra.'
+    : 'First contact (up to 3 attempts, one per day). No response in 3 business days = auto-close.'
+  }\n\n${es?'¡Gracias!':'Thank you!'}\nBest regards,\nESD`;
+}
+
+function buildSNOWNote(f) {
+  const { action, system, problem, detail, caseData } = f;
+  const prob = problem || 'Issue';
+  const sys = system || 'System';
+
+  if (action === 'escalamiento' || action === 'troubleshooting') {
+    return `📋 Issue Short Summary:\n${sys} – ${prob}\n\n• Customer Information:\n  ○ App ID: ${f.appId||''}\n  ○ Client ID: ${f.clientId||''}\n  ○ Loan ID: ${f.loanId||''}\n  ○ Hostname: ${f.hostname||''}\n\n• Issue Summary:\n  ○ ${detail||prob}\n  ○ Impact: ${f.impact||'User cannot proceed'}\n\n• Troubleshoot Steps:\n  ○ ${f.tsRealizado||'Standard TS performed'}\n  ○ Result: ${f.resultadoTS||'Issue persists'}\n\n• Scope: ${f.alcance||'1 user'}${f.kbRef?`\n\n• Reference: ${f.kbRef}`:''}\n\n► Issue persists despite all troubleshooting steps attempted.\nRequesting ${f.requestTeam||caseData?.team||'L2'} investigation.\n${f.notas_eus==='Sí'?'\nEUS a:\n':''}\n🔷 Team, could you please assist us?\n\nBest regards,\nESD`;
+  }
+  if (action === 'cierre') {
+    return `📋 Issue Short Summary:\n${sys} – ${f.resumen||'Resolved'}\n\n• Resolution:\n  ○ ${f.resumen||''}\n  ○ Root Cause: ${f.causaRaiz||'Identified'}\n\n• Actions: ${f.acciones||'TS performed'}\n• Result: ${f.resultado||'Resolved'}\n${f.hostname?`• Hostname: ${f.hostname}`:''}\n${f.kbRef?`• Reference: ${f.kbRef}`:''}\n\n► Issue resolved. Ticket closed.`;
+  }
+  if (action === 'no_es_issue') {
+    return `📋 ${sys||'Request'} – Not technical / Operations\n\n• Summary: ${f.situacion||'Reviewed'}\n• Action: ${f.instruccion||'Redirected'}\n${f.kbRef?`• Reference: ${f.kbRef}`:''}\n\n► No ESD action. Ticket closed.`;
+  }
+  if (action === 'hardware') {
+    return `📋 Hardware – ${f.equipo||'Equipment'}\n\n• Hostname: ${f.hostname||''}\n• Location: ${f.location||''}\n• Issue: ${f.sintoma||prob}\n• Safety: ${f.seguridad||'No'}\n• TS: ${f.tsRealizado||'Basic HW TS'}\n• Request: ${f.solicitud||'Review'}\n${f.kbRef?`• Reference: ${f.kbRef}`:''}\n\n► Issue persists.\n🔷 Team, could you please assist us?\n\nBest regards,\nESD`;
+  }
+  return '';
+}
+
+// ============================================================
+// PREBUILT NOTES
+// ============================================================
+let prebuiltFields = {};
+
+function showPrebuilt() {
+  prebuiltFields = {};
+  renderPrebuiltList();
+  showView('viewPrebuilt');
+}
+
+function renderPrebuiltList() {
+  const list = document.getElementById('prebuiltList');
+  const detail = document.getElementById('prebuiltDetail');
+  detail.classList.add('hidden');
+  list.classList.remove('hidden');
+
+  list.innerHTML = Object.entries(PREBUILT_NOTES).map(([name, data]) => `
+    <div class="prebuilt-card" onclick="renderPrebuiltDetail('${name}')" style="cursor:pointer;">
+      <div class="prebuilt-card-header">
+        <span class="prebuilt-card-title">${name}</span>
+        <span class="badge badge-customer">${data.tag}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPrebuiltDetail(name) {
+  const data = PREBUILT_NOTES[name];
+  if (!data) return;
+  prebuiltFields = {};
+
+  const list = document.getElementById('prebuiltList');
+  const detail = document.getElementById('prebuiltDetail');
+  list.classList.add('hidden');
+  detail.classList.remove('hidden');
+
+  let html = `
+    <div class="section-header">
+      <span class="section-title">📋 ${name}</span>
+      <button class="btn-back" onclick="renderPrebuiltList()">← Notes</button>
+    </div>
+  `;
+
+  if (data.fields.length > 0) {
+    html += data.fields.map(f => `
+      <div class="field">
+        <label>${f.label}</label>
+        <input type="text" id="pb_${f.id}" placeholder="${f.placeholder||''}" oninput="updatePrebuilt('${name}')">
+      </div>
+    `).join('');
+  }
+
+  html += `<div id="pb_output"></div>`;
+  detail.innerHTML = html;
+  updatePrebuilt(name);
+}
+
+function updatePrebuilt(name) {
+  const data = PREBUILT_NOTES[name];
+  const d = {};
+  data.fields.forEach(f => {
+    const el = document.getElementById('pb_' + f.id);
+    d[f.id] = el ? el.value : '';
+  });
+
+  const content = data.template(d);
+  const out = document.getElementById('pb_output');
+  if (out) {
+    out.innerHTML = `
+      <div class="output-block">
+        <div class="output-header">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="output-title">📋 SNOW Note</span>
+            <span class="output-tag output-tag-note">SNOW NOTE</span>
+          </div>
+          <button class="copy-btn" id="pbCopyBtn" onclick="copyText('${encodeURIComponent(content)}','pbCopyBtn')">Copy</button>
+        </div>
+        <pre class="output-pre">${escHtml(content)}</pre>
+      </div>
+    `;
+  }
+}
+
+// ============================================================
+// ONBOARDING / OFFBOARDING
+// ============================================================
+function showOnboarding() {
+  const list = document.getElementById('onboardingList');
+
+  // Group by category
+  const onboarding = Object.entries(OB_TEMPLATES).filter(([,v]) => v.category === 'onboarding');
+  const offboarding = Object.entries(OB_TEMPLATES).filter(([,v]) => v.category === 'offboarding');
+  const special = Object.entries(OB_TEMPLATES).filter(([,v]) => v.category === 'special');
+
+  let html = '';
+
+  if (onboarding.length) {
+    html += `<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:8px;">Onboarding</div>`;
+    html += onboarding.map(([name, tpl]) => renderOBCard(name, tpl)).join('');
+  }
+  if (offboarding.length) {
+    html += `<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:14px;">Offboarding</div>`;
+    html += offboarding.map(([name, tpl]) => renderOBCard(name, tpl)).join('');
+  }
+  if (special.length) {
+    html += `<div style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:14px;">Special Cases</div>`;
+    html += special.map(([name, tpl]) => renderOBCard(name, tpl)).join('');
+  }
+
+  list.innerHTML = html;
+  showView('viewOnboarding');
+}
+
+function showOffboarding() { showOnboarding(); }
+
+function renderOBCard(name, tpl) {
+  const content = tpl.steps.join('\n');
+  const id = 'ob_' + name.replace(/[^a-z0-9]/gi, '_');
+  return `
+    <div class="ob-card" style="border-left:3px solid ${tpl.color};">
+      <div class="ob-card-header">
+        <span style="font-size:12px;font-weight:700;color:${tpl.color};">${name}</span>
+        <button class="copy-btn" id="${id}" onclick="copyText('${encodeURIComponent(content)}','${id}')" style="background:${tpl.color}">Copy</button>
+      </div>
+      <pre class="prebuilt-pre">${escHtml(content)}</pre>
+    </div>
+  `;
+}
+
+// ============================================================
+// CONTACT LOG
+// ============================================================
+function showContactLog() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  document.getElementById('timeDisplay').textContent = '⏰ Current time: ' + timeStr;
+  showView('viewContactLog');
+  updateContactLog();
+}
+
+function updateContactLog() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const contact = document.getElementById('contactNum')?.value || '2nd Contact';
+
+  const content = `**${contact}**\n\n**Contacted via:**\n✅ Message sent through ServiceNow → Time sent: ${timeStr}\n✅ Email sent through ServiceNow → Time sent: ${timeStr}\n❌ Manual email → Not attempted\n✅ Slack message → Time sent: ${timeStr}\n❌ Phone call to → Not attempted`;
+
+  document.getElementById('contactLogOutput').innerHTML = `
+    <div class="output-block">
+      <div class="output-header">
+        <span class="output-title">📝 Contact Log</span>
+        <button class="copy-btn" id="clCopyBtn" onclick="copyText('${encodeURIComponent(content)}','clCopyBtn')">Copy</button>
+      </div>
+      <pre class="output-pre">${escHtml(content)}</pre>
+    </div>
+  `;
+}
+
+// ============================================================
+// PASSWORD
+// ============================================================
+function showPassword() {
+  const stepsHtml = PASSWORD_FLOW.steps.map((s, i) => `
+    <div class="pw-step">
+      <span class="pw-step-num">${i+1}.</span> ${s}
+    </div>
+  `).join('');
+
+  const content = PASSWORD_FLOW.note;
+  document.getElementById('passwordContent').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:10px;margin-bottom:10px;">
+      <p style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px;">Step-by-step flow:</p>
+      ${stepsHtml}
+    </div>
+    <div class="output-block">
+      <div class="output-header">
+        <span class="output-title">📋 SNOW Note (complete)</span>
+        <button class="copy-btn" id="pwCopyBtn" onclick="copyText('${encodeURIComponent(content)}','pwCopyBtn')">Copy</button>
+      </div>
+      <pre class="output-pre">${escHtml(content)}</pre>
+    </div>
+  `;
+  showView('viewPassword');
+}
+
+// ============================================================
+// SLACK SUMMARY
+// ============================================================
+function updateSlackSummary() {
+  const ticket = document.getElementById('ss_ticket')?.value || 'INCXXXXXXX';
+  const issue = document.getElementById('ss_issue')?.value || 'Description';
+  const ts = document.getElementById('ss_ts')?.value || 'Steps performed';
+  const res = document.getElementById('ss_res')?.value || 'Resolved / Escalated to ___';
+
+  const content = `**SLACK SUPPORT FINAL TEMPLATE**\nReference ticket: ${ticket}\nIssue: ${issue}\nTroubleshooting: ${ts}\nResolution: ${res}`;
+
+  document.getElementById('slackSummaryOutput').innerHTML = `
+    <div class="output-block">
+      <div class="output-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="output-title">📣 Slack Support Summary</span>
+          <span class="output-tag output-tag-slack">SLACK</span>
+        </div>
+        <button class="copy-btn" id="ssCopyBtn" onclick="copyText('${encodeURIComponent(content)}','ssCopyBtn')">Copy</button>
+      </div>
+      <pre class="output-pre">${escHtml(content)}</pre>
+    </div>
+  `;
+}
+
+function showSlackSummary() {
+  showView('viewSlackSummary');
+  updateSlackSummary();
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+// ============================================================
+// PROPER / KB RULES
+// ============================================================
+// ➕ AGREGA NUEVOS TIPOS DE CONVERSIÓN AQUÍ ↓
+// Sigue la estructura: { title, tag, fields[], template(d) }
+// ============================================================
+const PROPER_TEMPLATES = {
+  "Convert Request → Incident": {
+    tag: "REQ → INC",
+    tagColor: "#ef4444",
+    description: "Ticket opened as General Request but should be Incident (something broken)",
+    fields: [{ id: "tktNo", label: "Ticket Number (TKT NO)", placeholder: "INC/REQ0012345" }],
+    template_es: (d) => `Hola,\n\nCancelamos tu ticket (${d.tktNo||"TKT NO"}) debido a que fue abierto incorrectamente como Solicitud General cuando debió haberse abierto como Incidente ya que estás reportando algo que no funciona.\n\nPor favor usa la siguiente liga para abrir un nuevo ticket de Incidente.\n\n[LINK — agrega el link de SNOW aquí]\n\nGracias,\nEquipo de Service Desk`,
+    template_en: (d) => `Hello,\n\nWe have cancelled your ticket (${d.tktNo||"TKT NO"}) due it was submitted incorrectly as General Request when it should have been submitted as Incident since you are reporting things that are not working.\n\nPlease follow below link to submit a new Incident ticket:\n\n[LINK — add SNOW link here]\n\nThanks,\nService Desk Team`,
+  },
+  "Convert Incident → Request": {
+    tag: "INC → REQ",
+    tagColor: "#f59e0b",
+    description: "Ticket opened as Incident but should be Request (access, equipment, general inquiry)",
+    fields: [{ id: "tktNo", label: "Ticket Number (TKT NO)", placeholder: "INC/REQ0012345" }],
+    template_es: (d) => `Hola,\n\nCancelamos tu ticket (${d.tktNo||"TKT NO"}) debido a que fue abierto incorrectamente como Incidente (Something's broken) cuando debió haberse abierto como Solicitud (Request).\n\n- Para Acceso a Aplicaciones: por favor abre un ticket de Applications Access Request.\n[LINK — agrega link aquí]\n\n- Para Solicitudes Generales o Nuevo Equipo: por favor abre un ticket de "I need something".\n[LINK — agrega link aquí]\n\nGracias,\nEquipo de Service Desk`,
+    template_en: (d) => `Hello,\n\nWe have cancelled your ticket (${d.tktNo||"TKT NO"}) due it was submitted incorrectly as Incident (Something's broken) when it should have been submitted as Request based on below criteria:\n\n- For Access to Application: please submit a new Applications Access Request ticket.\n[LINK — add link here]\n\n- For General Inquiries or Equipment Requests: please submit an "I need something" ticket.\n[LINK — add link here]\n\nThanks,\nService Desk Team`,
+  },
+  "Convert INC & REQ → Applications Access Request": {
+    tag: "→ APP ACCESS",
+    tagColor: "#8b5cf6",
+    description: "Ticket should be Applications Access Request (triggers required approvals automatically)",
+    fields: [{ id: "tktNo", label: "Ticket Number (TKT NO)", placeholder: "INC/REQ0012345" }],
+    template_es: (d) => `Hola,\n\nCancelamos tu ticket (${d.tktNo||"TKT NO"}) debido a que fue abierto incorrectamente. Debió haberse abierto como Applications Access Request para que se soliciten automáticamente las aprobaciones necesarias.\n\nPor favor usa la siguiente liga:\n[LINK — agrega link aquí]\n\nTen en cuenta que tu solicitud requerirá aprobación.\n\nGracias,\nEquipo de Service Desk`,
+    template_en: (d) => `Hello,\n\nWe have cancelled your ticket (${d.tktNo||"TKT NO"}) due it was submitted incorrectly. It should have been submitted as Applications Access Request so that it will automatically trigger all required approvals.\n\nPlease follow below link:\n[LINK — add link here]\n\nPlease inform your manager that your Request will require approval.\n\nThanks,\nService Desk Team`,
+  },
+};
+// ============================================================
+// ➕ FIN SECCIÓN PROPER — agrega arriba de esta línea
+// ============================================================
+
+let properLang = 'es';
+let properFieldValues = {};
+
+function showProper() {
+  properFieldValues = {};
+  renderProperList();
+  showView('viewProper');
+}
+
+function showProperPlaceholder() {
+  document.getElementById('placeholderTitle').textContent = '📖 KB Rules';
+  showView('viewPlaceholder');
+}
+
+function renderProperList() {
+  const list = document.getElementById('properList');
+  const detail = document.getElementById('properDetail');
+  detail.classList.add('hidden');
+  list.classList.remove('hidden');
+
+  list.innerHTML = Object.entries(PROPER_TEMPLATES).map(([name, data]) => `
+    <div class="prebuilt-card" onclick="renderProperDetail('${name}')" style="cursor:pointer;border-left-color:${data.tagColor};">
+      <div class="prebuilt-card-header">
+        <span class="prebuilt-card-title">${name}</span>
+        <span class="badge" style="background:${data.tagColor}22;color:${data.tagColor};">${data.tag}</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${data.description}</div>
+    </div>
+  `).join('');
+}
+
+function renderProperDetail(name) {
+  const data = PROPER_TEMPLATES[name];
+  if (!data) return;
+  properFieldValues = {};
+  properLang = 'es';
+
+  const list = document.getElementById('properList');
+  const detail = document.getElementById('properDetail');
+  list.classList.add('hidden');
+  detail.classList.remove('hidden');
+
+  let html = `
+    <div class="section-header" style="margin-bottom:10px;">
+      <span class="section-title" style="font-size:12px;">${name}</span>
+      <button class="btn-back" onclick="renderProperList()">← Back</button>
+    </div>
+    <div class="lang-toggle" style="margin-bottom:10px;">
+      <button class="lang-btn active" id="propLangEs" onclick="setProperLang('${name}','es')">🇲🇽 ES</button>
+      <button class="lang-btn" id="propLangEn" onclick="setProperLang('${name}','en')">🇺🇸 EN</button>
+    </div>
+  `;
+  html += data.fields.map(f => `
+    <div class="field">
+      <label>${f.label}</label>
+      <input type="text" id="prop_${f.id}" placeholder="${f.placeholder||''}" oninput="updateProperOutput('${name}')">
+    </div>
+  `).join('');
+  html += `<div id="proper_output"></div>`;
+  detail.innerHTML = html;
+  updateProperOutput(name);
+}
+
+function setProperLang(name, lang) {
+  properLang = lang;
+  document.getElementById('propLangEs').className = 'lang-btn' + (lang==='es'?' active':'');
+  document.getElementById('propLangEn').className = 'lang-btn' + (lang==='en'?' active':'');
+  updateProperOutput(name);
+}
+
+function updateProperOutput(name) {
+  const data = PROPER_TEMPLATES[name];
+  const d = {};
+  data.fields.forEach(f => {
+    const el = document.getElementById('prop_' + f.id);
+    d[f.id] = el ? el.value : '';
+  });
+  const content = properLang === 'es' ? data.template_es(d) : data.template_en(d);
+  const out = document.getElementById('proper_output');
+  if (out) {
+    out.innerHTML = `
+      <div class="output-block">
+        <div class="output-header">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="output-title">📋 SNOW Message</span>
+            <span class="output-tag output-tag-snow">PROPER</span>
+          </div>
+          <button class="copy-btn" id="propCopyBtn" onclick="copyText('${encodeURIComponent(content)}','propCopyBtn')">Copy</button>
+        </div>
+        <pre class="output-pre">${escHtml(content)}</pre>
+      </div>
+    `;
+  }
+}
+
+// ============================================================
+// FOLLOW-UP MATRIX
+// ============================================================
+// ➕ AGREGA NUEVOS SCRIPTS O FILAS DE MATRIX AQUÍ ↓
+// Cada entrada en MATRIX_SCRIPTS: { tag, tagColor, title, en, es }
+// ============================================================
+const MATRIX_ROWS = [
+  { who: "User + Svpr",                       via: "Tag both in SNOW + Slack", time: "5 min",  script: "warning", team: "ESD" },
+  { who: "User + Svpr",                       via: "Tag both in SNOW + Slack", time: "15 min", script: "warning", team: "ESD" },
+  { who: "User + Svpr + Manager",             via: "Tag All in SNOW + Slack",  time: "30 min", script: "warning", team: "ESD" },
+  { who: "User + Svpr + Manager + Director + ESD Management", via: "Tag All in SNOW + Slack", time: "45 min", script: "escalate", team: "ESD Management" },
+];
+
+const MATRIX_SCRIPTS = {
+  warning: {
+    tag: "WARNING",
+    tagColor: "#f59e0b",
+    title: "⚠️ Warning Script",
+    en: `Hello,\nTo better assist you we need the following:\n(describe information required: prints, screens and so on)\nFor faster resolution, we ask that you regularly check the comments in your ticket or ServiceNow email notifications, in case we require additional information.\nNOTE: If information requested is not provided within 3 days from when the ticket was submitted, this ticket will be closed and you will need to resubmit a new one.\nThanks,\nService Desk Team`,
+    es: `Hola,\nPara ayudarte mejor necesitamos lo siguiente:\n(Describe la información solicitada: capturas de pantalla etc.)\nPara una solución rápida, solicitamos que revises constantemente los comentarios en el ticket o correos electrónicos, en caso que necesitemos más información.\nNota: Si la información solicitada no se proporciona dentro de las 3 días desde que el ticket fue creado, el ticket será cerrado y necesitarás abrir uno nuevo.\nGracias,\nEquipo de Service Desk`,
+  },
+  closing: {
+    tag: "CLOSURE",
+    tagColor: "#22c55e",
+    title: "✅ Closing Script",
+    en: `Hello,\nWe tried in several occasions to reach out to you by posting comments in the ticket and sending ServiceNow email notification.\nThis ticket has been closed due to no activity.\nIf issue is still occurring, please open a new ticket.\nThanks,\nService Desk Team`,
+    es: `Hola,\nIntentamos en varias ocasiones comunicarnos contigo a través de comentarios en el ticket y mandando notificaciones de correo desde ServiceNow.\nEste ticket se cerró por falta de actividad.\nSi el inconveniente persiste, por favor abre un nuevo ticket.\nGracias,\nEquipo de Service Desk`,
+  },
+};
+// NOTE (Zeus Missing Info): User + Svpr → 5 min (Warning), N/A → 24h (Closure)
+// ============================================================
+// ➕ FIN SECCIÓN MATRIX — agrega arriba de esta línea
+// ============================================================
+
+let matrixLang = 'es';
+
+function showMatrix() {
+  matrixLang = 'es';
+  renderMatrix();
+  showView('viewMatrix');
+}
+
+function showMatrixPlaceholder() {
+  document.getElementById('placeholderTitle').textContent = '📋 Contact Log +';
+  showView('viewPlaceholder');
+}
+
+function renderMatrix() {
+  const es = matrixLang === 'es';
+  let html = `
+    <div class="lang-toggle" style="margin-bottom:12px;">
+      <button class="lang-btn ${matrixLang==='es'?'active':''}" onclick="setMatrixLang('es')">🇲🇽 ES</button>
+      <button class="lang-btn ${matrixLang==='en'?'active':''}" onclick="setMatrixLang('en')">🇺🇸 EN</button>
+    </div>
+
+    <p style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Incident Standard Process</p>
+    <div style="overflow-x:auto;margin-bottom:14px;">
+      <table style="width:100%;border-collapse:collapse;font-size:10px;">
+        <thead>
+          <tr style="background:var(--surface2);">
+            <th style="padding:6px 8px;text-align:left;border:1px solid var(--border2);color:var(--text3);">Who to reach</th>
+            <th style="padding:6px 8px;text-align:left;border:1px solid var(--border2);color:var(--text3);">Via</th>
+            <th style="padding:6px 8px;text-align:left;border:1px solid var(--border2);color:var(--text3);">Time</th>
+            <th style="padding:6px 8px;text-align:left;border:1px solid var(--border2);color:var(--text3);">Script</th>
+            <th style="padding:6px 8px;text-align:left;border:1px solid var(--border2);color:var(--text3);">Team</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${MATRIX_ROWS.map(r => `
+            <tr style="border-bottom:1px solid var(--border);">
+              <td style="padding:5px 8px;border:1px solid var(--border);color:var(--text2);">${r.who}</td>
+              <td style="padding:5px 8px;border:1px solid var(--border);color:var(--text2);">${r.via}</td>
+              <td style="padding:5px 8px;border:1px solid var(--border);color:var(--blue2);font-weight:700;">${r.time}</td>
+              <td style="padding:5px 8px;border:1px solid var(--border);">
+                <span style="font-size:9px;font-weight:700;color:${r.script==='escalate'?'#ef4444':'#f59e0b'};">${r.script==='escalate'?'ESCALATE':'WARNING'}</span>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--border);color:var(--text3);">${r.team}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <p style="font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Scripts</p>
+    ${Object.entries(MATRIX_SCRIPTS).map(([key, s]) => {
+      const content = es ? s.es : s.en;
+      const btnId = 'matrix_copy_' + key;
+      return `
+        <div class="output-block" style="border-left:3px solid ${s.tagColor};">
+          <div class="output-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="output-title">${s.title}</span>
+              <span class="output-tag" style="background:${s.tagColor}22;color:${s.tagColor};">${s.tag}</span>
+            </div>
+            <button class="copy-btn" id="${btnId}" onclick="copyText('${encodeURIComponent(content)}','${btnId}')" style="background:${s.tagColor}">Copy</button>
+          </div>
+          <pre class="output-pre">${escHtml(content)}</pre>
+        </div>
+      `;
+    }).join('')}
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:4px;">
+      <p style="font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:4px;">📌 Zeus Missing Info (Not Potential HAI)</p>
+      <p style="font-size:10px;color:var(--text3);">User + Svpr → Tag both SNOW + Slack → <span style="color:var(--amber);font-weight:700;">5 min → Warning Script</span></p>
+      <p style="font-size:10px;color:var(--text3);">N/A → <span style="color:var(--green);font-weight:700;">24 hours → Closing Script</span></p>
+    </div>
+  `;
+
+  document.getElementById('matrixContent').innerHTML = html;
+}
+
+function setMatrixLang(lang) {
+  matrixLang = lang;
+  renderMatrix();
+}
+
+// ============================================================
+// ➕ GUIDE FOR COPILOT / CHATGPT
+// ============================================================
+// To add a new SYSTEM:           → add entry to CASE_CATALOG object
+// To add a new PREBUILT NOTE:    → add entry to PREBUILT_NOTES object
+// To add a new OB TEMPLATE:      → add entry to OB_TEMPLATES object
+// To add a new PROPER rule:      → add entry to PROPER_TEMPLATES object
+// To add a new MATRIX script:    → add entry to MATRIX_SCRIPTS object
+// To add a matrix row:           → add entry to MATRIX_ROWS array
+// NEVER change HTML structure, CSS, or existing function names.
+// ONLY add new entries following existing patterns.
+// ============================================================
+
+
+// ============================================================
+// 📅 ZOOM INVITE
+// ============================================================
+function showZoomInvite() {
+  renderZoomInvite();
+  showView('viewZoomInvite');
+}
+
+function renderZoomInvite() {
+  const el = document.getElementById('zoomInviteContent');
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="sg-field"><label class="sg-label">Usuario (@Slack)</label>
+          <input id="zi_user" class="sg-input" type="text" placeholder="nombre.apellido"></div>
+        <div class="sg-field"><label class="sg-label">Ticket #</label>
+          <input id="zi_ticket" class="sg-input" type="text" placeholder="INC0000000"></div>
+      </div>
+      <div class="sg-field"><label class="sg-label">Idioma de salida</label>
+        <div style="display:flex;gap:14px;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;">
+            <input type="radio" name="zi_lang" value="es" checked style="accent-color:var(--cyan);"> 🇲🇽 Español</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;">
+            <input type="radio" name="zi_lang" value="en" style="accent-color:var(--cyan);"> 🇺🇸 English</label>
+        </div>
+      </div>
+      <button onclick="generateZoomInvite()" style="background:linear-gradient(135deg,var(--cyan),var(--blue));color:#fff;border:none;border-radius:8px;padding:12px;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;">
+        ⚡ Generate Zoom Message
+      </button>
+    </div>
+    <div id="ziOutput" class="hidden" style="margin-top:10px;"></div>
+  `;
+}
+
+function generateZoomInvite() {
+  const user = (document.getElementById('zi_user')?.value||'').trim();
+  const ticket = (document.getElementById('zi_ticket')?.value||'').trim();
+  const langEl = document.querySelector('input[name="zi_lang"]:checked');
+  const es = !langEl || langEl.value === 'es';
+  const mention = user ? '@' + user : '@usuario';
+  const tRef = ticket || 'INC/REQXXXXXXX';
+
+  const ticketLineES = ticket ? 'Siguiendo con el ticket :ticketsnow: *' + tRef + '*.\n\n' : '';
+  const ticketLineEN = ticket ? 'Following up on ticket :ticketsnow: *' + tRef + '*.\n\n' : '';
+
+  const msgES = mention + ' :pika-wave:\n\n'
+    + ticketLineES
+    + 'Si el problema persiste, podemos revisarlo en una sesi\u00f3n en vivo por Zoom:\n'
+    + ':link: https://oportun.zoom.us/my/lalo.esd\n'
+    + ':white_check_mark: Conf\u00edrmanos para admitirte en la reuni\u00f3n.\n\n'
+    + 'Best regards,\nESD';
+
+  const msgEN = mention + ' :pika-wave:\n\n'
+    + ticketLineEN
+    + 'If the issue persists, we can review it in a live Zoom session:\n'
+    + ':link: https://oportun.zoom.us/my/lalo.esd\n'
+    + ':white_check_mark: Let us know to admit you to the meeting.\n\n'
+    + 'Best regards,\nESD';
+
+  const msg = es ? msgES : msgEN;
+  const btnId = 'zi_copy';
+  const out = document.getElementById('ziOutput');
+  out.classList.remove('hidden');
+  out.innerHTML = '<div class="output-block" style="border-left:3px solid var(--cyan);">'
+    + '<div class="output-header"><div style="display:flex;align-items:center;gap:8px;">'
+    + '<span class="output-title">\ud83d\udcc5 Zoom Invite</span>'
+    + '<span class="output-tag" style="background:#06b6d422;color:var(--cyan);">Slack</span></div>'
+    + '<button class="copy-btn" id="' + btnId + '" onclick="copyText(\'' + encodeURIComponent(msg) + '\',\'' + btnId + '\')" style="background:var(--cyan)">Copy</button></div>'
+    + '<pre class="output-pre">' + escHtml(msg) + '</pre></div>';
+}
+
+// ============================================================
+// 🤖 SMART GENERATOR
+// ============================================================
+
+// Systems grouped by tag — used to filter options by objetivo
+const SG_SYSTEMS_AGENT = [
+  'Five9 – Audio / Desconexiones','Five9 – Estación Not Assigned','Five9 – Supervisor Dashboard',
+  'ZEUS – Lento / No Carga','ZEUS – Pre-Approval no corre',
+  'Cresta – No detecta voz','Excel / O365','Okta / Outlook','WVD / Azure'
+];
+const SG_SYSTEMS_CUSTOMER = [
+  'Online Account (OA) – Login / Bloqueo','OA – No llega código de verificación',
+  'Oportun App – Document Upload','Payments / PNM / rACH'
+];
+const SG_SYSTEMS_OPS = [
+  'ZEUS – Dirección / VIN / Co-Applicant','Cambios Operativos'
+];
+const SG_SYSTEMS_HARDWARE = ['Windows / Hardware'];
+
+function getSGSystems(objetivo) {
+  if (objetivo === 'hardware_note') return SG_SYSTEMS_HARDWARE;
+  if (objetivo === 'cierre' || objetivo === 'no_issue') {
+    return [...SG_SYSTEMS_AGENT, ...SG_SYSTEMS_CUSTOMER, ...SG_SYSTEMS_OPS, ...SG_SYSTEMS_HARDWARE];
+  }
+  // primer_contacto, troubleshooting, escalamiento — no ops, no hardware
+  return [...SG_SYSTEMS_AGENT, ...SG_SYSTEMS_CUSTOMER];
+}
+
+const SG_ESC_TEAMS = [
+  'No escala (L1 resuelve)','App Team (ZEUS/OA/Firma)','Endpoint / EUS (hardware)',
+  'Backend / PNM','Identity / Okta team','Provisioning / WVD','Cresta / Five9 team'
+];
+
+function showSmartGen() { renderSGForm(); showView('viewSmartGen'); }
+
+function renderSGForm() {
+  const currentObj = document.getElementById('sg_objetivo')?.value || 'primer_contacto';
+  const sysOpts = getSGSystems(currentObj).map(s => `<option value="${s}">${s}</option>`).join('');
+  const escOpts = SG_ESC_TEAMS.map(t => `<option value="${t}">${t}</option>`).join('');
+  document.getElementById('sgFormArea').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:9px;margin-top:4px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="sg-field"><label class="sg-label">Tipo <span style="color:var(--red)">*</span></label>
+          <select id="sg_tipo" class="sg-input"><option value="INC">INC – Issue</option><option value="REQ">REQ – Request</option></select></div>
+        <div class="sg-field"><label class="sg-label">Ticket #</label>
+          <input id="sg_ticket" class="sg-input" type="text" placeholder="INC0000000"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="sg-field"><label class="sg-label">Usuario (@Slack)</label>
+          <input id="sg_usuario" class="sg-input" type="text" placeholder="nombre.apellido"></div>
+        <div class="sg-field"><label class="sg-label">Ubicación</label>
+          <select id="sg_ubicacion" class="sg-input">
+            <option value="">— seleccionar —</option>
+            <option value="WFH / Home Office">WFH / Home Office</option>
+            <option value="Onsite / Sitio">Onsite / Sitio</option>
+            <option value="Tienda / Store">Tienda / Store</option>
+          </select></div>
+      </div>
+      <div class="sg-field"><label class="sg-label">Sistema afectado <span style="color:var(--red)">*</span></label>
+        <select id="sg_sistema" class="sg-input">
+          <option value="">— seleccionar —</option>${sysOpts}<option value="Otro">Otro</option>
+        </select></div>
+      <div class="sg-field"><label class="sg-label">Síntoma / Error exacto <span style="color:var(--red)">*</span></label>
+        <input id="sg_sintoma" class="sg-input" type="text" placeholder="ej. Cresta no transcribe, Five9 se desconecta, Zeus lento..."></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="sg-field"><label class="sg-label">Desde cuándo</label>
+          <input id="sg_desde" class="sg-input" type="text" placeholder="ej. hoy, ayer, 2 hrs"></div>
+        <div class="sg-field"><label class="sg-label">¿Persiste?</label>
+          <select id="sg_persiste" class="sg-input">
+            <option value="No confirmado">No confirmado</option><option value="Sí">Sí</option><option value="No">No</option>
+          </select></div>
+      </div>
+      <div class="sg-field"><label class="sg-label">Impacto (qué no puede hacer)</label>
+        <input id="sg_impacto" class="sg-input" type="text" placeholder="ej. No puede tomar llamadas, No puede firmar préstamo"></div>
+      <div class="sg-field"><label class="sg-label">Alcance</label>
+        <select id="sg_alcance" class="sg-input">
+          <option value="">—</option><option value="1 usuario">1 usuario</option>
+          <option value="Múltiples usuarios">Múltiples usuarios</option>
+          <option value="Toda la campaña">Toda la campaña</option>
+          <option value="Toda la tienda">Toda la tienda</option>
+        </select></div>
+      <div class="sg-field"><label class="sg-label">TS ya realizado</label>
+        <textarea id="sg_ts" class="sg-input" rows="2" placeholder="ej. Reinicio, Zscaler steps, borrar historial, reingreso Okta..."></textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="sg-field"><label class="sg-label">Hostname</label>
+          <input id="sg_hostname" class="sg-input" type="text" placeholder="MX0000PC"></div>
+        <div class="sg-field"><label class="sg-label">App / Client / Loan ID</label>
+          <input id="sg_ids" class="sg-input" type="text" placeholder="N/A si no aplica"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="sg-field"><label class="sg-label">Objetivo</label>
+          <select id="sg_objetivo" class="sg-input" onchange="refreshSGSystems()">
+            <option value="primer_contacto">Primer contacto</option>
+            <option value="troubleshooting">Troubleshooting</option>
+            <option value="escalamiento">Escalamiento</option>
+            <option value="cierre">Cierre</option>
+            <option value="no_issue">No es issue (operativo)</option>
+          </select></div>
+        <div class="sg-field"><label class="sg-label">Escalar a (si aplica)</label>
+          <select id="sg_escala" class="sg-input">${escOpts}</select></div>
+      </div>
+      <div class="sg-field"><label class="sg-label">Idioma de salida</label>
+        <div style="display:flex;gap:14px;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;">
+            <input type="radio" name="sg_lang" value="es" checked style="accent-color:var(--violet);"> 🇲🇽 Español</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;">
+            <input type="radio" name="sg_lang" value="en" style="accent-color:var(--violet);"> 🇺🇸 English</label>
+        </div>
+      </div>
+
+      <div class="sg-field"><label class="sg-label">Notas extra (opcional)</label>
+        <input id="sg_notas" class="sg-input" type="text" placeholder="cualquier detalle adicional"></div>
+      <button onclick="generateSGMessages()" style="background:linear-gradient(135deg,var(--violet),var(--blue));color:#fff;border:none;border-radius:8px;padding:12px;font-family:var(--sans);font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;">
+        ⚡ Generate Messages
+      </button>
+    </div>
+  `;
+}
+
+function sgv(id) { const e=document.getElementById(id); return e?e.value.trim():''; }
+
+function refreshSGSystems() {
+  const objetivo = document.getElementById('sg_objetivo')?.value || 'primer_contacto';
+  const select = document.getElementById('sg_sistema');
+  if (!select) return;
+  const currentVal = select.value;
+  const systems = getSGSystems(objetivo);
+  select.innerHTML = '<option value="">— seleccionar —</option>'
+    + systems.map(s => `<option value="${s}" ${s===currentVal?'selected':''}>${s}</option>`).join('');
+  // If currently selected system no longer valid, reset
+  if (currentVal && !systems.includes(currentVal)) {
+    select.value = '';
+  }
+}
+
+function generateSGMessages() {
+  const tipo=sgv('sg_tipo'), ticket=sgv('sg_ticket')||(sgv('sg_tipo')+'0000000');
+  const usuario=sgv('sg_usuario'), ubicacion=sgv('sg_ubicacion');
+  const sistema=sgv('sg_sistema')||'Sistema', sintoma=sgv('sg_sintoma')||'issue reportado';
+  const desde=sgv('sg_desde'), persiste=sgv('sg_persiste');
+  const impacto=sgv('sg_impacto'), alcance=sgv('sg_alcance');
+  const ts=sgv('sg_ts'), hostname=sgv('sg_hostname'), ids=sgv('sg_ids');
+  const objetivo=sgv('sg_objetivo'), escala=sgv('sg_escala'), notas=sgv('sg_notas');
+  const langEl=document.querySelector('input[name="sg_lang"]:checked');
+  const es=!langEl||langEl.value==='es';
+  const mention=usuario?'@'+usuario:'@usuario';
+  const tsSteps=sgAutoTS(sistema,ts,es);
+
+  let slack='', snow='', snowNote='';
+
+  if(objetivo==='primer_contacto') slack=sgSlackPC(mention,ticket,sistema,sintoma,desde,ubicacion,hostname,ids,tsSteps,es);
+  else if(objetivo==='troubleshooting') slack=sgSlackTS(mention,ticket,sistema,sintoma,tsSteps,es);
+  else if(objetivo==='cierre') slack=sgSlackCierre(mention,ticket,sistema,sintoma,es);
+  else if(objetivo==='no_issue') slack=sgSlackNoIssue(mention,ticket,sistema,sintoma,es);
+  else if(objetivo==='escalamiento') slack=sgSlackEsc(mention,ticket,sistema,sintoma,es);
+
+  snow=sgSNOWUser(ticket,sistema,sintoma,desde,ubicacion,hostname,ids,tsSteps,objetivo,es);
+  if(objetivo==='escalamiento'||objetivo==='cierre') {
+    snowNote=sgSNOWNote(ticket,sistema,sintoma,impacto,alcance,ts,hostname,ids,objetivo,escala,notas);
+  }
+  renderSGOut(slack,snow,snowNote,objetivo,es);
+}
+
+function sgZoomBlock(es) {
+  return es
+    ? '\n\n:calendar: Si el problema persiste, podemos revisarlo en una sesión en vivo por Zoom:\n:link: https://oportun.zoom.us/my/lalo.esd\n:white_check_mark: Confírmanos para admitirte en la reunión.'
+    : '\n\n:calendar: If the issue persists, we can review it in a live Zoom session:\n:link: https://oportun.zoom.us/my/lalo.esd\n:white_check_mark: Let us know to admit you to the meeting.';
+}
+
+function sgFooter(includeZoom,es) {
+  const z=includeZoom?sgZoomBlock(es):'';
+  return es
+    ? `\n\n:warning: Este es el primer contacto (hasta tres intentos, uno por día). Sin respuesta en 3 días hábiles, el ticket se cerrará.${z}\n\n¡Gracias!\nBest regards,\nESD`
+    : `\n\n:warning: First contact (up to 3 attempts, one per day). No response in 3 business days = auto-close.${z}\n\nThank you!\nBest regards,\nESD`;
+}
+
+function sgStepsFmt(steps) {
+  const n=[':one:',':two:',':three:',':four:',':five:',':six:',':seven:',':eight:'];
+  return steps.map((s,i)=>`${n[i]||(i+1)+'.'} ${s}`).join('\n');
+}
+
+function sgAutoTS(sistema,tsHecho,es) {
+  if(tsHecho&&tsHecho.length>10) return null;
+  const s=sistema.toLowerCase();
+  if(s.includes('five9')||s.includes('cresta')||s.includes('zeus')||s.includes('okta')||s.includes('outlook')) {
+    return es?[
+      'Realiza una prueba en www.speedtest.net — comparte captura completa.',
+      'Zscaler → Private Access → Connectivity: verifica Service Status: ON / Authenticated: Yes. Toma captura.',
+      'Zscaler → More → ejecuta: Repair App / Restart Service / Update App / Update Policy.',
+      'Chrome → borra historial "Todos los tiempos" (Avanzado / Mostrar más, todas las casillas).',
+      'Cierra Chrome completamente (ninguna ventana abierta).',
+      'Abre Chrome, inicia sesión desde Okta y accede al sistema.'
+    ]:[
+      'Run a speed test at www.speedtest.net — share a full screenshot.',
+      'Zscaler → Private Access → Connectivity: confirm Service Status: ON / Authenticated: Yes. Share screenshot.',
+      'Zscaler → More → run: Repair App / Restart Service / Update App / Update Policy.',
+      'Chrome → clear history for "All time" (Advanced / Show more, check all boxes).',
+      'Close Chrome completely (no windows remaining).',
+      'Reopen Chrome, log in via Okta, and access the system.'
+    ];
+  }
+  if(s.includes('windows')||s.includes('hardware')||s.includes('monitor')) {
+    return es?[
+      'Realiza un reinicio completo (apaga y enciende, no solo "Reiniciar").',
+      'Verifica hostname: clic derecho Escritorio → Propiedades del sistema.',
+      'Prueba en otro puerto USB / cable / monitor si aplica.',
+      'Ejecuta Dell Update y verifica actualizaciones pendientes.'
+    ]:[
+      'Perform a full power cycle (shut down and power on, not just Restart).',
+      'Check hostname: right-click Desktop → System Properties.',
+      'Test with another USB port / cable / monitor if applicable.',
+      'Run Dell Update and check for pending updates.'
+    ];
+  }
+  if(s.includes('oa')||s.includes('online account')||s.includes('app')||s.includes('signing')||s.includes('firma')) {
+    return es?[
+      'Intenta acceder desde modo incógnito en Chrome.',
+      'Borra cookies y caché del navegador.',
+      'Prueba en otro navegador (Edge o Firefox).',
+      'Prueba desde otro dispositivo si es posible.'
+    ]:[
+      'Try accessing from Chrome Incognito mode.',
+      'Clear browser cookies and cache.',
+      'Try a different browser (Edge or Firefox).',
+      'Try from a different device if possible.'
+    ];
+  }
+  return es?[
+    'Confirma si el issue sigue ocurriendo actualmente.',
+    'Intenta reproducirlo en otro dispositivo o navegador.',
+    'Comparte una captura del error exacto.'
+  ]:[
+    'Confirm if the issue is currently ongoing.',
+    'Try to reproduce it on another device or browser.',
+    'Share a screenshot of the exact error.'
+  ];
+}
+
+function sgSlackPC(mention,ticket,sistema,sintoma,desde,ubicacion,hostname,ids,tsSteps,es) {
+  const hst=hostname?'\n:computer: Hostname: *'+hostname+'*':'';
+  const id2=ids?'\n:mag: IDs: '+ids:'';
+  const ubi=ubicacion?'\n:round_pushpin: Ubicación: '+ubicacion:'';
+  let body=mention+' :pika-wave:\n\n';
+  body+=es
+    ?'Te escribimos por el ticket :ticketsnow: *'+ticket+'*, donde nos indicas que *'+sistema+'* presenta: _'+sintoma+'_.'+ubi+hst+id2+'\n\n:question: ¿Podrías confirmarnos si el problema *sigue ocurriendo actualmente*?'
+    :'Reaching out regarding ticket :ticketsnow: *'+ticket+'*, where you reported *'+sistema+'* is experiencing: _'+sintoma+'_.'+ubi+hst+id2+'\n\n:question: Could you confirm if the issue is *still occurring*?';
+  if(tsSteps&&tsSteps.length) {
+    body+='\n\n'+(es?'✅ *Pasos a seguir (en este orden):*':'✅ *Support steps (in order):*')+'\n'+sgStepsFmt(tsSteps)+'\n\n'+(es?'Si el issue *persiste*, indícanos para continuar.':'If the issue *persists*, please let us know so we can continue.');
+  }
+  body+=sgFooter(includeZoom,es);
+  return body;
+}
+
+function sgSlackTS(mention,ticket,sistema,sintoma,tsSteps,es) {
+  let body=mention+' :pika-wave:\n\n';
+  body+=es
+    ?'Siguiendo con el ticket :ticketsnow: *'+ticket+'* — *'+sistema+'*: _'+sintoma+'_.\n\nPor favor realiza los siguientes pasos *en este orden*:'
+    :'Following up on ticket :ticketsnow: *'+ticket+'* — *'+sistema+'*: _'+sintoma+'_.\n\nPlease follow these steps *in order*:';
+  if(tsSteps&&tsSteps.length) body+='\n\n'+sgStepsFmt(tsSteps);
+  body+='\n\n'+(es?'Si el issue *persiste* después de estos pasos, indícanos.':'If the issue *persists* after these steps, please let us know.');
+  body+=sgFooter(includeZoom,es);
+  return body;
+}
+
+function sgSlackCierre(mention,ticket,sistema,sintoma,es) {
+  let body=mention+' :pika-wave:\n\n';
+  body+=es
+    ?'Te escribimos por el ticket :ticketsnow: *'+ticket+'*.\n\n:white_check_mark: El inconveniente con *'+sistema+'* – _'+sintoma+'_ ha sido *resuelto*.\n\nEl ticket será cerrado. Si vuelve a ocurrir, no dudes en crear un nuevo ticket.'
+    :'Reaching out regarding ticket :ticketsnow: *'+ticket+'*.\n\n:white_check_mark: The issue with *'+sistema+'* – _'+sintoma+'_ has been *resolved*.\n\nThe ticket will be closed. If it recurs, please open a new ticket.';
+  if(includeZoom) body+=sgZoomBlock(es);
+  body+='\n\n'+(es?'¡Gracias!':'Thank you!')+'\nBest regards,\nESD';
+  return body;
+}
+
+function sgSlackNoIssue(mention,ticket,sistema,sintoma,es) {
+  return mention+' :pika-wave:\n\n'+(es
+    ?'Te escribimos por el ticket :ticketsnow: *'+ticket+'*.\n\nDespués de revisar el caso, confirmamos que lo reportado con *'+sistema+'* – _'+sintoma+'_ *no corresponde a un issue técnico de ESD*, sino a un proceso operativo.\n\n:mag: Por favor sigue el proceso correspondiente con tu supervisor o el equipo de operaciones.\n\nEl ticket será cerrado.\n\nBest regards,\nESD'
+    :'Reaching out regarding ticket :ticketsnow: *'+ticket+'*.\n\nAfter reviewing, we confirm the reported situation with *'+sistema+'* – _'+sintoma+'_ *is not a technical ESD issue*, but an operational process.\n\n:mag: Please follow the appropriate process with your supervisor or operations team.\n\nThe ticket will be closed.\n\nBest regards,\nESD');
+}
+
+function sgSlackEsc(mention,ticket,sistema,sintoma,es) {
+  return mention+' :pika-wave:\n\n'+(es
+    ?'Te escribimos por el ticket :ticketsnow: *'+ticket+'* relacionado con *'+sistema+'* – _'+sintoma+'_.\n\n:gear: Hemos escalado tu caso al equipo especializado. Te mantendremos informado con actualizaciones.\n\nBest regards,\nESD'
+    :'Reaching out regarding ticket :ticketsnow: *'+ticket+'* related to *'+sistema+'* – _'+sintoma+'_.\n\n:gear: We have escalated your case to the specialized team. We will keep you updated.\n\nBest regards,\nESD');
+}
+
+function sgSNOWUser(ticket,sistema,sintoma,desde,ubicacion,hostname,ids,tsSteps,objetivo,es) {
+  const subj=es?'Seguimiento en '+ticket+' – '+sistema:'Follow-up on '+ticket+' – '+sistema;
+  let body=(es?'Asunto: ':'Subject: ')+subj+'\n\n'+(es?'Hola,':'Hello,')+'\n\n';
+  body+=es
+    ?'Te escribimos por el ticket '+ticket+', donde reportas que '+sistema+' presenta: '+sintoma+'.'
+    :'We are reaching out regarding ticket '+ticket+', where you reported an issue with '+sistema+': '+sintoma+'.';
+  if(desde) body+=(es?' Desde: ':' Since: ')+desde+'.';
+  if(ubicacion) body+='\n'+(es?'Ubicación: ':'Location: ')+ubicacion+'.';
+  if(hostname) body+='\nHostname: '+hostname+'.';
+  if(ids) body+='\nIDs: '+ids+'.';
+  if(objetivo==='primer_contacto'||objetivo==='troubleshooting') {
+    body+='\n\n'+(es?'Por favor realiza los siguientes pasos:':'Please follow these steps:')+'\n';
+    if(tsSteps&&tsSteps.length) tsSteps.forEach((s,i)=>{ body+=(i+1)+') '+s+'\n'; });
+    body+='\n'+(es?'Si el problema persiste, indícanos para continuar.':'If the issue persists, please let us know.');
+  } else if(objetivo==='cierre') {
+    body+='\n\n'+(es?'El inconveniente ha sido resuelto. El ticket será cerrado.':'The issue has been resolved. The ticket will be closed.');
+  } else if(objetivo==='no_issue') {
+    body+='\n\n'+(es?'Después de revisar, confirmamos que no corresponde a un issue técnico. Por favor sigue el proceso con tu supervisor.':'After reviewing, we confirm this is not a technical issue. Please follow the appropriate process with your supervisor.');
+  } else if(objetivo==='escalamiento') {
+    body+='\n\n'+(es?'Hemos escalado tu caso al equipo especializado. Te mantendremos informado.':'Your case has been escalated. We will keep you updated.');
+  }
+  body+='\n\n'+(es?'Este es el primer contacto (hasta 3 intentos, uno por día). Sin respuesta en 3 días hábiles, el ticket se cierra.':'First contact (up to 3 attempts, one per day). No response in 3 business days = auto-close.');
+  body+='\n\n'+(es?'¡Gracias!':'Thank you!')+'\nBest regards,\nESD';
+  return body;
+}
+
+function sgSNOWNote(ticket,sistema,sintoma,impacto,alcance,ts,hostname,ids,objetivo,escala,notas) {
+  // Always English for internal notes
+  if(objetivo==='cierre') {
+    let n='▶ Issue Short Summary:\n'+sistema+' – '+sintoma+'\n\n▶ Resolution:\n';
+    if(ts) n+=ts+'\n\n';
+    if(hostname) n+='Device: '+hostname+'\n';
+    if(ids) n+='IDs: '+ids+'\n';
+    n+='\n➤ Issue resolved. Ticket can be closed.';
+    return n;
+  }
+  let n='▶ Issue Short Summary:\n'+sistema+' – '+sintoma+'\n\n▶ Customer Information:\n';
+  n+=hostname?'  ◦ Hostname: '+hostname+'\n':'';
+  n+=ids?'  ◦ IDs: '+ids+'\n':'  ◦ N/A\n';
+  n+='\n▶ Issue Summary:\n  ◦ System: '+sistema+'\n  ◦ Symptom: '+sintoma+'\n';
+  if(impacto) n+='  ◦ Impact: '+impacto+'\n';
+  if(alcance) n+='  ◦ Scope: '+alcance+'\n';
+  if(ts) { n+='\n▶ Troubleshoot Steps:\n'; ts.split('\n').forEach(l=>{ if(l.trim()) n+='  ◦ '+l.trim()+'\n'; }); }
+  if(notas) n+='\n▶ Additional Notes:\n  ◦ '+notas+'\n';
+  n+='\n➤ Issue persists despite all troubleshooting steps attempted.\n';
+  if(escala&&!escala.includes('No escala')) n+='Requesting '+escala+' team to please assist.\n';
+  n+='\n🔧 Team, could you please assist us?\n\nBest regards,\nESD';
+  return n;
+}
+
+function renderSGOut(slack,snow,snowNote,objetivo,es) {
+  const outArea=document.getElementById('sgOutputArea');
+  const formArea=document.getElementById('sgFormArea');
+  formArea.classList.add('hidden');
+  outArea.classList.remove('hidden');
+  const blocks=[
+    {title:es?'💬 Mensaje Slack':'💬 Slack Message',tag:'Slack',color:'#3b82f6',content:slack},
+    {title:es?'📧 ServiceNow a Usuario':'📧 ServiceNow to User',tag:'SNOW',color:'#22c55e',content:snow}
+  ];
+  if(snowNote) blocks.push({title:'Internal SNOW Note (EN)',tag:'SNOW Internal',color:'#f59e0b',content:snowNote});
+  let html='<div style="margin-top:4px;display:flex;flex-direction:column;gap:10px;">'
+    +'<div style="display:flex;gap:8px;align-items:center;">'
+    +'<button onclick="sgBackToForm()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:6px 10px;border-radius:6px;font-family:var(--mono);font-size:10px;cursor:pointer;">← Edit Form</button>'
+    +'<span style="font-size:10px;color:var(--text3);">Copy each block separately.</span></div>';
+  blocks.forEach((b,i)=>{
+    const btnId='sg_copy_'+i;
+    html+='<div class="output-block" style="border-left:3px solid '+b.color+';">'
+      +'<div class="output-header"><div style="display:flex;align-items:center;gap:8px;">'
+      +'<span class="output-title">'+b.title+'</span>'
+      +'<span class="output-tag" style="background:'+b.color+'22;color:'+b.color+';">'+b.tag+'</span></div>'
+      +'<button class="copy-btn" id="'+btnId+'" onclick="copyText(\''+encodeURIComponent(b.content)+'\',\''+btnId+'\')" style="background:'+b.color+'">Copy</button></div>'
+      +'<pre class="output-pre">'+escHtml(b.content)+'</pre></div>';
+  });
+  html+='</div>';
+  outArea.innerHTML=html;
+}
+
+function sgBackToForm() {
+  document.getElementById('sgFormArea').classList.remove('hidden');
+  document.getElementById('sgOutputArea').classList.add('hidden');
+  document.getElementById('sgOutputArea').innerHTML='';
+}
+
+// Inject SG styles
+(function(){
+  const s=document.createElement('style');
+  s.textContent='.sg-field{display:flex;flex-direction:column;gap:3px;}.sg-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;}.sg-input{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 9px;outline:none;transition:border-color .15s;resize:none;width:100%;}.sg-input:focus{border-color:var(--violet);}.sg-input option{background:var(--surface2);color:var(--text);}';
+  document.head.appendChild(s);
+})();
+
+
+function copyText(encoded, btnId) {
+  const text = decodeURIComponent(encoded);
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.textContent = '✓ Copied';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1500);
+    }
+  });
+}
+</script>
+</body>
+</html>
