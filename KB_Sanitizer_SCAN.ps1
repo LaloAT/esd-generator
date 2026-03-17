@@ -1,48 +1,107 @@
 # ============================================================
-# ESD KB Sanitizer - Step 1: SCAN
+# ESD KB Sanitizer - Step 1: SCAN (v2)
 # ============================================================
-# This script ONLY SCANS your MHTML files for sensitive data.
-# It does NOT modify anything. It generates a report.
+# Extracts TEXT from MHTML first, then scans for credentials.
+# Avoids false positives from HTML/CSS/base64 image data.
+# Does NOT modify anything. Generates a report.
 # ============================================================
 
-# --- CONFIGURATION ---
 $BaseFolder = "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO"
 $SourceFolder = "$BaseFolder\SNOW KB"
 $ReportFile = "$BaseFolder\SCAN_REPORT.txt"
 
-# --- PATTERNS TO DETECT ---
+# --- TEXT EXTRACTION FUNCTION ---
+function Get-CleanText {
+    param([string]$RawContent)
+
+    # Find HTML portion
+    $Html = $RawContent
+    if ($RawContent -match '(?s)(<html[^>]*>.*?</html>)') {
+        $Html = $Matches[1]
+    }
+
+    # Remove encoded content (base64 images, CSS, scripts)
+    $Html = $Html -replace '(?s)<script[^>]*>.*?</script>', ''
+    $Html = $Html -replace '(?s)<style[^>]*>.*?</style>', ''
+    $Html = $Html -replace '(?s)<head[^>]*>.*?</head>', ''
+    # Remove base64 data
+    $Html = $Html -replace 'data:[^"''>\s]+', ''
+    # Remove MIME boundaries and headers
+    $Html = $Html -replace '(?m)^Content-[^\n]+\n', ''
+    $Html = $Html -replace '(?m)^------[^\n]+\n', ''
+
+    # Convert HTML to text
+    $Text = $Html -replace '<br\s*/?>', "`n"
+    $Text = $Text -replace '</?p[^>]*>', "`n"
+    $Text = $Text -replace '</?div[^>]*>', "`n"
+    $Text = $Text -replace '</?li[^>]*>', "`n"
+    $Text = $Text -replace '</?tr[^>]*>', "`n"
+    $Text = $Text -replace '</?td[^>]*>', ' '
+    $Text = $Text -replace '</?h[1-6][^>]*>', "`n"
+    # Remove all remaining HTML tags
+    $Text = $Text -replace '<[^>]+>', ''
+    # Decode entities
+    $Text = $Text -replace '&amp;', '&'
+    $Text = $Text -replace '&lt;', '<'
+    $Text = $Text -replace '&gt;', '>'
+    $Text = $Text -replace '&quot;', '"'
+    $Text = $Text -replace '&nbsp;', ' '
+    $Text = $Text -replace '&#\d+;', ''
+
+    # Clean up
+    $Lines = $Text -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -gt 3 }
+    # Remove lines that look like code/CSS (contain { } or very long strings without spaces)
+    $CleanLines = @()
+    foreach ($Line in $Lines) {
+        # Skip CSS-like lines
+        if ($Line -match '^\.' -and $Line -match '\{') { continue }
+        if ($Line -match '\{[^}]+\}') { continue }
+        # Skip base64-like strings (40+ chars without spaces)
+        if ($Line -match '[A-Za-z0-9+/=]{40,}' -and $Line -notmatch '\s') { continue }
+        # Skip MIME headers
+        if ($Line -match '^Content-Type:') { continue }
+        if ($Line -match '^MIME-') { continue }
+        $CleanLines += $Line
+    }
+
+    return ($CleanLines -join "`n")
+}
+
+# --- PATTERNS TO DETECT (more specific to avoid false positives) ---
 $Patterns = @(
-    @{ Name = "PASSWORD_FIELD";    Regex = '(?i)(password|contrase.a|pwd|passw|pass\s*:)\s*[:=]?\s*.+' }
-    @{ Name = "USERNAME_FIELD";    Regex = '(?i)(username|user\s*name|user\s*:?|login\s*:?|usuario)\s*[:=]\s*.+' }
-    @{ Name = "CREDENTIAL_FIELD";  Regex = '(?i)(credential|cred\s*:)\s*[:=]?\s*.+' }
-    @{ Name = "API_KEY";           Regex = '(?i)(api[_\s]?key|apikey|api[_\s]?token|secret[_\s]?key)\s*[:=]\s*.+' }
-    @{ Name = "CONNECTION_STRING"; Regex = '(?i)(connection\s*string|conn\s*str)\s*[:=]\s*.+' }
-    @{ Name = "SECRET";            Regex = '(?i)(secret|token)\s*[:=]\s*[^\s]{8,}' }
+    @{ Name = "PASSWORD"; Regex = '(?i)(password|contrase.a)\s*[:=]\s*\S+' }
+    @{ Name = "PASSWORD"; Regex = '(?i)(pwd|pass)\s*[:=]\s*\S+' }
+    @{ Name = "USERNAME"; Regex = '(?i)(username|user name)\s*[:=]\s*\S+' }
+    @{ Name = "CREDENTIAL"; Regex = '(?i)(credential|login)\s*[:=]\s*\S+' }
+    @{ Name = "API_KEY"; Regex = '(?i)(api[_\s]?key|secret[_\s]?key)\s*[:=]\s*\S+' }
+    @{ Name = "GENERIC_PASS"; Regex = '(?i)password\s+is\s+\S+' }
+    @{ Name = "GENERIC_PASS"; Regex = '(?i)use\s+password\s*:\s*\S+' }
+    @{ Name = "GENERIC_PASS"; Regex = '(?i)default\s+password\s*[:=]?\s*\S+' }
+    @{ Name = "GENERIC_PASS"; Regex = '(?i)temporary\s+password\s*[:=]?\s*\S+' }
+    @{ Name = "GENERIC_PASS"; Regex = '(?i)reset\s+password\s+to\s+\S+' }
 )
 
 # --- SCAN ---
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  ESD KB Sanitizer - SCAN MODE" -ForegroundColor Cyan
+Write-Host "  ESD KB Sanitizer - SCAN MODE v2" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path $SourceFolder)) {
     Write-Host "ERROR: Folder not found: $SourceFolder" -ForegroundColor Red
-    Write-Host "Update the SourceFolder path in the script." -ForegroundColor Yellow
     exit
 }
 
 $Files = Get-ChildItem -Path $SourceFolder -Include "*.mhtml","*.mht","*.html" -Recurse -ErrorAction SilentlyContinue
-
 Write-Host "Found $($Files.Count) files to scan." -ForegroundColor Green
-Write-Host "Scanning for sensitive data..." -ForegroundColor Yellow
+Write-Host "Extracting text and scanning (this takes about 1-2 minutes)..." -ForegroundColor Yellow
 Write-Host ""
 
 $TotalFindings = 0
 $FilesWithFindings = 0
 $Report = @()
 $Report += "============================================================"
-$Report += "  ESD KB SANITIZER - SCAN REPORT"
+$Report += "  ESD KB SANITIZER - SCAN REPORT v2"
 $Report += "  Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 $Report += "  Source: $SourceFolder"
 $Report += "  Files scanned: $($Files.Count)"
@@ -52,29 +111,32 @@ $Report += ""
 $FileCount = 0
 foreach ($File in $Files) {
     $FileCount++
-    if ($FileCount % 50 -eq 0) {
-        Write-Host "  Scanned $FileCount / $($Files.Count) files..." -ForegroundColor Gray
+    if ($FileCount % 100 -eq 0) {
+        Write-Host "  Processed $FileCount / $($Files.Count) files..." -ForegroundColor Gray
     }
 
     try {
-        $Content = Get-Content -Path $File.FullName -Raw -ErrorAction SilentlyContinue
-        if (-not $Content) { continue }
+        $RawContent = Get-Content -Path $File.FullName -Raw -ErrorAction SilentlyContinue
+        if (-not $RawContent) { continue }
+
+        # Extract clean text first
+        $CleanText = Get-CleanText -RawContent $RawContent
 
         $FileFindings = @()
         $LineNumber = 0
 
-        foreach ($Line in ($Content -split "`n")) {
+        foreach ($Line in ($CleanText -split "`n")) {
             $LineNumber++
             foreach ($Pattern in $Patterns) {
                 if ($Line -match $Pattern.Regex) {
-                    $CleanLine = $Line.Trim()
-                    if ($CleanLine.Length -gt 80) {
-                        $CleanLine = $CleanLine.Substring(0, 80) + "..."
+                    $DisplayLine = $Line.Trim()
+                    if ($DisplayLine.Length -gt 100) {
+                        $DisplayLine = $DisplayLine.Substring(0, 100) + "..."
                     }
                     $FileFindings += @{
                         Line = $LineNumber
                         Type = $Pattern.Name
-                        Content = $CleanLine
+                        Content = $DisplayLine
                     }
                     $TotalFindings++
                 }
@@ -83,9 +145,8 @@ foreach ($File in $Files) {
 
         if ($FileFindings.Count -gt 0) {
             $FilesWithFindings++
-            $ShortName = $File.Name
             $Report += "------------------------------------------------------------"
-            $Report += "FILE: $ShortName"
+            $Report += "FILE: $($File.Name)"
             $Report += "  Findings: $($FileFindings.Count)"
             foreach ($Finding in $FileFindings) {
                 $Report += "  [$($Finding.Type)] Line $($Finding.Line):"
@@ -95,7 +156,7 @@ foreach ($File in $Files) {
         }
 
     } catch {
-        # Skip files that cant be read
+        # Skip unreadable files
     }
 }
 
@@ -108,11 +169,7 @@ $Report += "  Files with findings:         $FilesWithFindings"
 $Report += "  Total findings:              $TotalFindings"
 $Report += "  Files clean (no findings):   $($Files.Count - $FilesWithFindings)"
 $Report += "============================================================"
-$Report += ""
-$Report += "  NEXT STEP: Review this report, then run the CLEAN script."
-$Report += "============================================================"
 
-# Save report
 $Report | Out-File -FilePath $ReportFile -Encoding UTF8
 
 Write-Host ""
@@ -127,6 +184,5 @@ Write-Host ""
 Write-Host "  Report saved to:" -ForegroundColor White
 Write-Host "  $ReportFile" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Open the report and review what was found." -ForegroundColor White
-Write-Host "  Then run KB_Sanitizer_CLEAN.ps1 to sanitize." -ForegroundColor White
+Write-Host "  Review the report, then run KB_Sanitizer_CLEAN.ps1" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor Cyan
