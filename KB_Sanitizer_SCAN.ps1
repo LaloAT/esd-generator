@@ -1,20 +1,18 @@
 # ============================================================
-# ESD KB Sanitizer — Step 1: SCAN
+# ESD KB Sanitizer - Step 1: SCAN
 # ============================================================
 # This script ONLY SCANS your MHTML files for sensitive data.
 # It does NOT modify anything. It generates a report.
-#
-# Run this first, review the report, then run Step 2 to clean.
 # ============================================================
 
 # --- CONFIGURATION ---
-$SourceFolder = "$env:USERPROFILE\Desktop\LLM-ESD-LALO\SNOW KB"
-$ReportFile = "$env:USERPROFILE\Desktop\LLM-ESD-LALO\SCAN_REPORT.txt"
+$BaseFolder = "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO"
+$SourceFolder = "$BaseFolder\SNOW KB"
+$ReportFile = "$BaseFolder\SCAN_REPORT.txt"
 
 # --- PATTERNS TO DETECT ---
-# These are regex patterns that match common credential formats
 $Patterns = @(
-    @{ Name = "PASSWORD_FIELD";    Regex = '(?i)(password|contraseña|pwd|passw|pass\s*:)\s*[:=]?\s*.+' }
+    @{ Name = "PASSWORD_FIELD";    Regex = '(?i)(password|contrase.a|pwd|passw|pass\s*:)\s*[:=]?\s*.+' }
     @{ Name = "USERNAME_FIELD";    Regex = '(?i)(username|user\s*name|user\s*:?|login\s*:?|usuario)\s*[:=]\s*.+' }
     @{ Name = "CREDENTIAL_FIELD";  Regex = '(?i)(credential|cred\s*:)\s*[:=]?\s*.+' }
     @{ Name = "API_KEY";           Regex = '(?i)(api[_\s]?key|apikey|api[_\s]?token|secret[_\s]?key)\s*[:=]\s*.+' }
@@ -24,7 +22,7 @@ $Patterns = @(
 
 # --- SCAN ---
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  ESD KB Sanitizer — SCAN MODE (read-only)" -ForegroundColor Cyan
+Write-Host "  ESD KB Sanitizer - SCAN MODE" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -34,10 +32,7 @@ if (-not (Test-Path $SourceFolder)) {
     exit
 }
 
-$Files = Get-ChildItem -Path $SourceFolder -Filter "*.mhtml" -ErrorAction SilentlyContinue
-if (-not $Files) {
-    $Files = Get-ChildItem -Path $SourceFolder -Include "*.mhtml","*.mht","*.html" -Recurse -ErrorAction SilentlyContinue
-}
+$Files = Get-ChildItem -Path $SourceFolder -Include "*.mhtml","*.mht","*.html" -Recurse -ErrorAction SilentlyContinue
 
 Write-Host "Found $($Files.Count) files to scan." -ForegroundColor Green
 Write-Host "Scanning for sensitive data..." -ForegroundColor Yellow
@@ -47,7 +42,7 @@ $TotalFindings = 0
 $FilesWithFindings = 0
 $Report = @()
 $Report += "============================================================"
-$Report += "  ESD KB SANITIZER — SCAN REPORT"
+$Report += "  ESD KB SANITIZER - SCAN REPORT"
 $Report += "  Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 $Report += "  Source: $SourceFolder"
 $Report += "  Files scanned: $($Files.Count)"
@@ -73,7 +68,6 @@ foreach ($File in $Files) {
             foreach ($Pattern in $Patterns) {
                 if ($Line -match $Pattern.Regex) {
                     $CleanLine = $Line.Trim()
-                    # Mask the actual value for the report (show first 20 chars + ...)
                     if ($CleanLine.Length -gt 80) {
                         $CleanLine = $CleanLine.Substring(0, 80) + "..."
                     }
@@ -101,7 +95,7 @@ foreach ($File in $Files) {
         }
 
     } catch {
-        # Skip files that can't be read
+        # Skip files that cant be read
     }
 }
 
@@ -116,25 +110,23 @@ $Report += "  Files clean (no findings):   $($Files.Count - $FilesWithFindings)"
 $Report += "============================================================"
 $Report += ""
 $Report += "  NEXT STEP: Review this report, then run the CLEAN script."
-$Report += "  The CLEAN script will replace sensitive lines with [CREDENTIAL REMOVED]"
-$Report += "  and save clean copies to SNOW_KB_CLEAN folder."
-$Report += "  Your original files will NOT be modified."
 $Report += "============================================================"
 
 # Save report
 $Report | Out-File -FilePath $ReportFile -Encoding UTF8
+
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  SCAN COMPLETE" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Files scanned:      $($Files.Count)" -ForegroundColor White
-Write-Host "  Files with issues:  $FilesWithFindings" -ForegroundColor $(if ($FilesWithFindings -gt 0) { "Yellow" } else { "Green" })
-Write-Host "  Total findings:     $TotalFindings" -ForegroundColor $(if ($TotalFindings -gt 0) { "Yellow" } else { "Green" })
+Write-Host "  Files with issues:  $FilesWithFindings" -ForegroundColor Yellow
+Write-Host "  Total findings:     $TotalFindings" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  Report saved to:" -ForegroundColor White
 Write-Host "  $ReportFile" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Open the report and review what was found." -ForegroundColor White
-Write-Host "  Then run Step 2 (CLEAN script) to sanitize." -ForegroundColor White
+Write-Host "  Then run KB_Sanitizer_CLEAN.ps1 to sanitize." -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor Cyan
