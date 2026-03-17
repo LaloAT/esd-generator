@@ -111,3 +111,14 @@ Build rag_search.py that:
 - Run it and test with: "Zeus slow for retail agent", "VPN not connecting", "Five9 no audio"
 
 Start with Task 1, then Task 2, then Task 3.
+
+
+The TF-IDF fallback is working but the quality is too low. I need the sentence-transformers model for better semantic matching. 
+
+Try downloading all-MiniLM-L6-v2 with these approaches:
+1. First try: pip install sentence-transformers and then download the model with SSL verification disabled
+2. If that fails: try downloading the model files directly from https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2 using curl or wget with --no-check-certificate
+3. If that fails: try using the mirror at https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2
+4. If nothing works: try a smaller model like all-MiniLM-L3-v2
+
+Once the model is available locally, rebuild the FAISS index with real embeddings instead of TF-IDF and re-test with "station id not assigned" - the correct match should be "Five9 - Access, Audio & in-app Issues"
