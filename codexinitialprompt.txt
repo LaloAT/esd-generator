@@ -1,0 +1,14 @@
+Read all 580 .txt files in this project folder. For each file, enrich it by adding these structured tags at the top of the file, before the original content:
+
+[TITLE] descriptive title based on the content
+[SYSTEM] detect from content (Zeus, Five9, Okta, OA, VPN, Zoom, Hardware, Payments, Slack, Citrix, SAP, Azure, Windows, Chrome, Atlassian, or Other)
+[CATEGORY] (Login, Error, Setup, Access, Performance, Hardware, Network, Account, or Other)
+[KEYWORDS] comma-separated keywords in English AND Spanish that a support agent would search for
+[SYNONYMS] different ways users describe this problem in English and Spanish
+[SYMPTOMS] what the user sees or reports
+[ESCALATION_TEAM] team to escalate to if found in the content
+[TROUBLESHOOTING] numbered steps extracted from the content
+[RESOLUTION] what fixes the issue
+[ESCALATION] when to escalate and what info to include
+
+Keep ALL original content below the tags. Save each file overwriting the original. Process all 580 files.
