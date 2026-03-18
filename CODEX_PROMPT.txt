@@ -348,3 +348,36 @@ Después en el GPT editor sube estos 2 archivos en Knowledge:
 
 ESD_Lalo_Complete_Reference.txt
 all_kbs_combined.txt
+
+
+
+
+Read these 4 files in LLM-ESD-LALO:
+- ESD_formatted_notes_and_messages.txt
+- ESD_L1_Master_Reference.txt
+- esd_l1_ai_support_resumen.txt
+- ESD_L1_reference_playbook.txt
+
+Analyze all 4 files and create ONE optimized file called ESD_Lalo_Complete_Reference.txt that:
+
+1. Merges all content intelligently - remove duplicates, keep the best version of each template
+2. Organizes everything into clear sections:
+   - OPERATIONAL RULES AND POLICIES
+   - MESSAGE TEMPLATES BY ACTION TYPE (first contact, troubleshooting, escalation, closure, not-an-issue, hardware)
+   - Each template labeled with: system type, language, retail vs corporate
+   - ESCALATION PATHS PER SYSTEM
+   - COMMON SCENARIOS WITH COMPLETE OUTPUTS
+   - STYLE RULES (tone, emojis, structure)
+3. At the top, note that this was compiled from the 4 source files
+4. Make it optimized for use as a GPT knowledge base - clear, searchable, no redundancy
+
+Save as ESD_Lalo_Complete_Reference.txt in LLM-ESD-LALO folder.
+
+Also generate the GPT configuration I should use. Create a file called GPT_INSTRUCTIONS.txt with:
+- The exact text I should paste in the GPT Instructions field
+- The Description text
+- 5 Conversation starters
+- Which capabilities to enable/disable
+- Which model to recommend
+
+Base the instructions on everything you learned from the 4 files + the 580 enriched KBs + my operational context.
