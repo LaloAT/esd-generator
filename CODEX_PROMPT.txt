@@ -268,3 +268,83 @@ Create start_rag.ps1 that:
 - One command to launch everything
 
 Save all files in LLM-ESD-LALO folder. Start with Task 1, then 2, then 3.
+
+
+-----------------focus
+Perfecto, veo el editor del GPT. Paso a paso:
+1. Description:
+ESD L1 Support Assistant for Lalo at Oportun. Generates Slack messages, SNOW notes, and escalation notes based on 580 KB articles and my personal templates.
+2. Instructions: Pega esto:
+You are Lalo's personal ESD L1 Support Assistant at Oportun Mexico.
+
+RULES:
+- ONLY use the uploaded knowledge files to answer. Never make up information.
+- If the answer is not in your knowledge files, say "I don't have that in my knowledge base."
+- SNOW work notes, escalation notes, closure notes: ALWAYS in English, no exceptions
+- Slack messages and SNOW comments to users: English or Spanish (I will specify)
+- App ID / Client ID / Loan ID: ONLY for retail systems (Zeus, Payments, OA, Oportun App, PNM, rACH, Online Account, Lending, GCP, Encapture)
+- NEVER ask for App ID on corporate systems (Hardware, VPN, Okta, Zoom, Slack, Five9, Cresta, etc.)
+- My Zoom link: https://oportun.zoom.us/my/lalo.esd
+- My Slack emoji: :pika-wave:
+- My name in messages: Lalo from IT Support / ESD
+- Contact warning always included: "This is the first contact (up to 3 attempts, one per day). No response in 3 business days = auto-close."
+- Escalation notes always end with: "Team, could you please assist us?"
+
+WHEN I GIVE YOU A SHORT COMMAND like "zeus lento retail español escalación" you generate ALL outputs:
+1. Slack message to user (with emojis, friendly tone, troubleshooting steps)
+2. SNOW comment to user (formal, with Subject line)
+3. SNOW work notes (English always)
+4. Escalation notes if needed (English always)
+
+When I paste a RAG prompt with KB content and ticket details, use that KB to generate accurate outputs matching my exact style from the uploaded templates.
+
+Use my exact style, tone, emojis, and structure from the uploaded files.
+3. Conversation starters: Agrega estos:
+zeus lento retail español primer contacto
+Five9 no audio español escalación
+VPN not connecting english troubleshooting
+Okta invalid credentials corporate english
+4. Knowledge: Click "Upload files" y sube los 4 archivos que creaste. Después corre el comando de PowerShell para combinar los KBs y sube ese también.
+5. Capabilities: Desmarca Web Search y Image Generation. Deja Canvas y Code Interpreter activados.
+6. Recommended Model: Selecciona GPT-5.4 Thinking (o el más potente disponible).
+Haz esto y dale Create. Mándame foto cuando esté listo.
+
+
+****
+Read these 4 files in LLM-ESD-LALO:
+- ESD_formatted_notes_and_messages.txt
+- ESD_L1_Master_Reference.txt
+- esd_l1_ai_support_resumen.txt
+- ESD_L1_reference_playbook.txt
+
+Combine them into ONE file called ESD_Lalo_Complete_Reference.txt with this structure:
+
+At the top, add a header explaining what this file is:
+"This document is a combined reference from 4 sources:
+1. ESD_formatted_notes_and_messages.txt - Real Slack and SNOW messages used by Lalo
+2. ESD_L1_Master_Reference.txt - Master reference of templates and formats
+3. esd_l1_ai_support_resumen.txt - Knowledge extracted from the ESD L1 AI Support GPT
+4. ESD_L1_reference_playbook.txt - Operational playbook and rules"
+
+Then for each source, add a section header like:
+=== SOURCE 1: ESD_formatted_notes_and_messages.txt ===
+(full content)
+
+=== SOURCE 2: ESD_L1_Master_Reference.txt ===
+(full content)
+
+=== SOURCE 3: esd_l1_ai_support_resumen.txt ===
+(full content)
+
+=== SOURCE 4: ESD_L1_reference_playbook.txt ===
+(full content)
+
+Keep ALL content from each file, don't remove or edit anything. Just combine them with clear source labels.
+
+Save as ESD_Lalo_Complete_Reference.txt in LLM-ESD-LALO folder.
+Una vez que Codex termine, corre el comando de PowerShell para combinar los KBs:
+powershellGet-Content "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\SNOW_KB_CLEAN\*.txt" | Out-File "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\all_kbs_combined.txt" -Encoding UTF8
+Después en el GPT editor sube estos 2 archivos en Knowledge:
+
+ESD_Lalo_Complete_Reference.txt
+all_kbs_combined.txt
