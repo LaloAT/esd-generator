@@ -185,3 +185,86 @@ What knowledge base documents and instructions were you configured with? Give me
 3. What escalation paths you know
 4. Any rules or policies you follow
 5. Export everything you know as a structured document
+
+
+-------------------
+
+Get-Content "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\SNOW_KB_CLEAN\*.txt" | Out-File "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\all_kbs_combined.txt" -Encoding UTF8
+```
+
+**Paso 2 — Crear el GPT personalizado.** Ve a ChatGPT → GPTs → Create a GPT y configúralo con:
+
+Nombre: `ESD Lalo Assistant`
+
+Instrucciones:
+```
+You are Lalo's personal ESD L1 Support Assistant at Oportun Mexico.
+
+RULES:
+- ONLY use the uploaded knowledge files to answer. Never search the web. Never make up information.
+- If the answer is not in your knowledge files, say "I don't have that in my knowledge base."
+- SNOW work notes, escalation notes, closure notes: ALWAYS in English
+- Slack messages and SNOW comments to users: English or Spanish (I will specify)
+- App ID / Client ID / Loan ID: ONLY for retail systems (Zeus, Payments, OA, Oportun App, PNM, rACH)
+- NEVER ask for App ID on corporate systems (Hardware, VPN, Okta, Zoom, Slack, etc.)
+- My Zoom link: https://oportun.zoom.us/my/lalo.esd
+- My Slack emoji: :pika-wave:
+- My name in messages: Lalo from IT Support / ESD
+
+WHEN I GIVE YOU A SHORT COMMAND like "zeus lento retail español escalación" you generate ALL outputs:
+1. Slack message to user
+2. SNOW comment to user
+3. SNOW work notes (English)
+4. Escalation notes if needed (English)
+
+Use my exact style, tone, emojis, and structure from the uploaded templates.
+
+
+
+
+I have 4 new reference files that contain my real message templates, rules, and style. Read them all:
+
+1. ESD_formatted_notes_and_messages.txt - my actual Slack and SNOW messages
+2. ESD_L1_Master_Reference.txt - master reference document
+3. esd_l1_ai_support_resumen.txt - knowledge from our existing ESD GPT
+4. ESD_L1_reference_playbook.txt - my operational playbook
+
+Copy these files from Downloads to the LLM-ESD-LALO folder first.
+
+Then do these tasks:
+
+TASK 1: IMPROVE RAG OUTPUTS
+- Read all 4 files and learn my exact message style, tone, emojis, structure
+- Update rag_search.py to generate outputs that match my real style:
+  * Slack messages: friendly, with :pika-wave:, numbered steps with emojis, warning about 3 days auto-close, "Gracias por tu colaboración. Best regards, ESD"
+  * SNOW comments: formal with Subject line
+  * SNOW work notes: always English, structured with Issue Summary, Customer Info (only retail), Troubleshoot Steps, Result, scope
+  * Escalation notes: always English, with "Team, could you please assist us?"
+- Fix App ID logic: ONLY ask for Zeus, Payments, OA, Oportun App, PNM, rACH. NEVER for Five9, Okta, VPN, Hardware, etc.
+
+TASK 2: BUILD WEB FRONTEND
+Based on the style of index_v2.html, create rag_frontend.html that:
+- Runs with rag_search.py as local server on localhost:8080
+- Clean modern UI matching my ESD Generator style
+- Search bar: type issue description, click Search
+- Top 5 results as cards with relevance %, system tag, title
+- Click a card → form appears: caller name, language (EN/ES toggle), action type dropdown (first contact / troubleshooting / escalation / closure / not-an-issue / hardware), ticket number
+- App ID field ONLY appears if system is retail
+- Generate button → shows outputs in separate boxes:
+  * Slack message
+  * SNOW comment
+  * SNOW work notes  
+  * Escalation notes (only if escalation selected)
+- Each box has "Copy" button
+- ALSO a "Copy prompt for GPT" button that generates a ready-to-paste prompt for my ChatGPT GPT with all context
+- Feedback buttons on each output: thumbs up / thumbs down / edit
+- Feedback saved to feedback.json
+- When generating, check feedback.json first for previous corrections
+
+TASK 3: STARTUP SCRIPT
+Create start_rag.ps1 that:
+- Starts the Python server
+- Opens Chrome to localhost:8080
+- One command to launch everything
+
+Save all files in LLM-ESD-LALO folder. Start with Task 1, then 2, then 3.
