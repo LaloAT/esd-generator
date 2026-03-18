@@ -122,3 +122,66 @@ Try downloading all-MiniLM-L6-v2 with these approaches:
 4. If nothing works: try a smaller model like all-MiniLM-L3-v2
 
 Once the model is available locally, rebuild the FAISS index with real embeddings instead of TF-IDF and re-test with "station id not assigned" - the correct match should be "Five9 - Access, Audio & in-app Issues"
+
+
+-----------------------------------------------
+
+
+I need you to generate a complete reference document of ALL the message templates and note formats I use in my ESD L1 work. You already know my style from all our previous conversations in this project. Generate:
+
+1. SLACK MESSAGES (10 examples minimum):
+   - First contact retail ES
+   - First contact retail EN
+   - First contact corporate ES
+   - First contact corporate EN
+   - Troubleshooting follow-up ES/EN
+   - 2nd/3rd contact ES/EN
+   - Closure ES/EN
+   - Not an issue / redirect ES/EN
+
+2. SNOW COMMENTS TO USER (5 examples):
+   - First contact formal EN/ES
+   - Follow-up EN/ES
+   - Closure EN/ES
+
+3. SNOW WORK NOTES - internal (5 examples):
+   - Escalation note (with App ID for retail)
+   - Escalation note (corporate, no App ID)
+   - Closure note
+   - Contact log
+
+4. For each template mark: system type, language, action type
+
+Generate them exactly how I like them - with my emojis, my tone, my structure. You know how I write.
+
+Now based on everything we've worked on together, give me the TOP 20 most common ticket scenarios I handle and for each one give me:
+
+1. Short description (how it appears in SNOW)
+2. System
+3. Retail or Corporate
+4. What I usually do (troubleshoot / escalate / close / redirect)
+5. The exact Slack message I would send (ES)
+6. The exact SNOW work note I would write (EN)
+7. If escalation: the exact escalation note (EN)
+8. Escalation team
+
+These should be the cases I see almost every day - the ones I could do with my eyes closed.
+
+Also give me all the corporate rules and policies I follow in my ESD work:
+- SLA timelines (when to close, when to escalate)
+- Contact attempt rules (3 attempts, 1 per day, 3 business days)
+- What goes in English vs Spanish
+- When to escalate vs close vs redirect
+- Which teams handle which systems
+- Any formatting rules for SNOW (work notes vs comments vs additional comments)
+- Ticket classification rules (INC vs REQ vs TASK)
+- HAI rules (High Activity Incidents)
+- Any rules from William or the team
+
+
+What knowledge base documents and instructions were you configured with? Give me a summary of:
+1. What systems you cover
+2. What troubleshooting steps you recommend per system
+3. What escalation paths you know
+4. Any rules or policies you follow
+5. Export everything you know as a structured document
