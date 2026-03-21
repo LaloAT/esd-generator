@@ -381,3 +381,13 @@ Also generate the GPT configuration I should use. Create a file called GPT_INSTR
 - Which model to recommend
 
 Base the instructions on everything you learned from the 4 files + the 580 enriched KBs + my operational context.
+
+
+The all_kbs_combined.txt is too large for ChatGPT's GPT knowledge base. 
+
+1. First, count the total characters in all_kbs_combined.txt
+2. The GPT knowledge limit is approximately 2 million characters per file
+3. Calculate how many parts we need
+4. Split it into the minimum number of files needed, splitting cleanly between articles (never in the middle of one)
+5. Name them: all_kbs_part01.txt, all_kbs_part02.txt, etc.
+6. Save in LLM-ESD-LALO folder
