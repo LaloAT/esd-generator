@@ -1,279 +1,384 @@
-# CODEX INSTRUCTIONS — LLM-ESD UPGRADE
+# CODEX INSTRUCTIONS — ADDENDUM 3: Conceptos Avanzados de la Guía de Estudio
 
-## Read this entire file before writing any code.
+## Agregar al archivo CODEX_INSTRUCTIONS_FINAL.md como upgrades adicionales.
 
-## What already exists
+## Estos son conceptos de la guía de estudio que SE PUEDEN implementar con lo que ya tenemos (modelos locales, FAISS, Python, sin APIs externas).
 
-This is NOT a greenfield project. There is already a working RAG system in:
-`C:\Users\jorge.ayala\OneDrive - Oportun\Desktop\LLM-ESD-LALO\`
+---
 
-### Existing infrastructure (DO NOT break these):
+### Upgrade 8: Cross-Encoder Reranking (Sección 9, 51 de la guía)
 
-| File | What it does | Status |
-|---|---|---|
-| `build_rag.py` | Parses enriched `.txt` from SNOW_KB_CLEAN, creates KBRecord objects, generates embeddings with sentence-transformers (all-MiniLM-L6-v2), builds FAISS index. Falls back to TF-IDF if semantic model fails. Outputs: `kb_faiss.index`, `kb_records.json`, `kb_meta.json` | WORKING — upgrade |
-| `rag_search.py` | Backend server on localhost:8080. Detects system/issue from pasted ticket text, classifies retail/corporate/operational, searches relevant KBs, builds sanitized prompt for GPT. | WORKING — upgrade |
-| `rag_frontend.html` | Web UI: paste Slack bridge message → Parse Ticket → Detected Context → KB Suggestions → Generated GPT Prompt with Copy button | WORKING — upgrade |
-| `start_rag.ps1` / `start_rag.cmd` | Launch server on localhost:8080, kill old processes, open Chrome | WORKING — keep |
-| `models/all-MiniLM-L6-v2` | Local embedding model already downloaded | WORKING — keep |
-| `rag_artifacts/` | FAISS index + metadata already built | WORKING — rebuild with upgrades |
-| `SNOW_KB_CLEAN/` | ~580 enriched `.txt` files with tags | WORKING — read only |
-| `SNOW KB/` | Original KB files (pre-enrichment) | WORKING — read only |
-| `index.html` / `index_v2.html` | Older UI versions, `rag_search.py` uses `index_v2.html` for Zoom link context | Keep for reference |
+**Concepto:** Después del retrieval (FAISS + BM25 + RRF), los top-10 resultados pasan por un segundo modelo (cross-encoder) que evalúa cada par query↔chunk JUNTOS. Es más lento pero mucho más preciso. Reordena los resultados — a veces el chunk #8 es más relevante que el #1.
 
-### Knowledge files for the Custom GPT:
+**Implementación en `rag_search.py`:**
 
-| File | What it is |
+1. Instalar: `pip install sentence-transformers` (ya lo tenemos).
+2. Cargar un cross-encoder local: `cross-encoder/ms-marco-MiniLM-L-6-v2` (pequeño, rápido, gratuito).
+3. Después del RRF fusion (que devuelve top-10), pasar cada par (query, chunk.raw_text) al cross-encoder.
+4. El cross-encoder devuelve un score de relevancia por par.
+5. Reordenar por ese score y devolver top-5.
+
+```python
+from sentence_transformers import CrossEncoder
+
+reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+def rerank(query: str, chunks: list[dict], top_k: int = 5) -> list[dict]:
+    pairs = [(query, c["raw_text"]) for c in chunks]
+    scores = reranker.predict(pairs)
+    for chunk, score in zip(chunks, scores):
+        chunk["rerank_score"] = float(score)
+    chunks.sort(key=lambda x: x["rerank_score"], reverse=True)
+    return chunks[:top_k]
+```
+
+6. En el frontend, mostrar `rerank_score` junto con `rrf_score` para transparencia.
+7. En la evaluación, agregar un cuarto modo: "hybrid+rerank" y comparar Recall@5 contra hybrid sin rerank.
+
+**Diagnóstico de cuándo activarlo:** Si en la evaluación ves que el Recall@5 es alto (los docs correctos ESTÁN en top-10) pero las respuestas del LLM son malas, el problema es el ORDERING — reranking lo resuelve. Si el Recall@5 es bajo, el problema es el retrieval y reranking no ayuda.
+
+---
+
+### Upgrade 9: Query Cache (Sección 6, 11 de la guía)
+
+**Concepto:** Queries repetidas como "how to reset VPN" o "password expired" no necesitan pasar por todo el pipeline cada vez. Cacheas la respuesta y la sirves en ~5ms en vez de ~2 segundos.
+
+**Implementación en `rag_search.py`:**
+
+1. Crear un dict en memoria: `query_cache = {}`.
+2. Key: el query normalizado (lowercase, stripped).
+3. Value: la respuesta completa + timestamp.
+4. Antes de buscar, checar el cache. Si existe y tiene menos de 24 horas, devolver la respuesta cacheada.
+5. Agregar header `X-Cache: HIT` o `X-Cache: MISS` en la respuesta HTTP.
+6. Endpoint `GET /cache/stats` que muestre: tamaño del cache, hit rate, queries más frecuentes.
+7. Endpoint `POST /cache/clear` para limpiar el cache (útil después de re-indexar).
+
+```python
+import time
+from collections import OrderedDict
+
+class QueryCache:
+    def __init__(self, max_size: int = 500, ttl_seconds: int = 86400):
+        self.cache = OrderedDict()
+        self.max_size = max_size
+        self.ttl = ttl_seconds
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, query: str):
+        key = query.lower().strip()
+        if key in self.cache:
+            entry = self.cache[key]
+            if time.time() - entry["timestamp"] < self.ttl:
+                self.hits += 1
+                self.cache.move_to_end(key)  # LRU
+                return entry["response"]
+            else:
+                del self.cache[key]
+        self.misses += 1
+        return None
+
+    def set(self, query: str, response: dict):
+        key = query.lower().strip()
+        if len(self.cache) >= self.max_size:
+            self.cache.popitem(last=False)  # remove oldest
+        self.cache[key] = {"response": response, "timestamp": time.time()}
+
+    def stats(self):
+        total = self.hits + self.misses
+        return {
+            "size": len(self.cache),
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_rate": round(self.hits / total, 3) if total > 0 else 0,
+        }
+```
+
+8. Invalidar cache automáticamente cuando se corre `build_rag.py` (guardar un timestamp de último build en `rag_artifacts/last_build.json` y comparar).
+
+---
+
+### Upgrade 10: Input Guardrails (Sección 37 de la guía — Defense in Depth)
+
+**Concepto:** Antes de procesar un query, validar que no sea: prompt injection, contenido ofensivo, o fuera de scope.
+
+**Implementación en `rag_search.py`:**
+
+1. **Sanitización básica:** Quitar caracteres especiales sospechosos, limitar longitud del query a 500 chars.
+
+2. **Detección de prompt injection:** Buscar patrones conocidos:
+```python
+INJECTION_PATTERNS = [
+    r"ignore\s+(previous|above|all)\s+instructions",
+    r"you\s+are\s+now\s+",
+    r"system\s*:\s*",
+    r"<\|.*?\|>",
+    r"```.*?```",
+    r"forget\s+(everything|what|your)",
+    r"new\s+instructions",
+    r"act\s+as\s+",
+    r"pretend\s+(you|to)\s+",
+]
+
+def check_injection(query: str) -> bool:
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, query, re.IGNORECASE):
+            return True
+    return False
+```
+
+3. **Delimitadores:** Cuando construyas el prompt para el LLM, separar claramente user content de system content:
+```
+=== SYSTEM INSTRUCTIONS (DO NOT MODIFY) ===
+{system_prompt}
+=== END SYSTEM ===
+
+=== KB DOCUMENTS ===
+{context}
+=== END DOCUMENTS ===
+
+=== USER QUESTION ===
+{query}
+=== END USER ===
+```
+
+4. **Output validation:** Después de que el LLM responde, verificar:
+   - No contiene PII patterns (SSN: `\d{3}-\d{2}-\d{4}`, credit card: `\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}`)
+   - El JSON es válido
+   - Confidence es un número entre 0 y 1
+   - Sources referencian KB numbers que realmente existen en el index
+
+5. Loguear todos los intentos bloqueados a `data/logs/blocked_queries.jsonl`.
+
+---
+
+### Upgrade 11: Session Tracing Mejorado (Sección 11 de la guía)
+
+**Concepto:** Cada query debe quedar registrado con todos los detalles para poder debuggear, construir golden dataset, y detectar degradación.
+
+**Implementación:**
+
+Cada query genera una entrada en `data/logs/sessions.jsonl`:
+
+```json
+{
+    "session_id": "uuid",
+    "timestamp": "2026-04-08T11:00:00Z",
+    "query": "agent cant login five9",
+    "query_type": "natural_language",
+    "routing": {"segment": "retail", "system_detected": "Five9"},
+    "retrieval": {
+        "semantic_results": 10,
+        "bm25_results": 8,
+        "after_rrf": 5,
+        "after_rerank": 5,
+        "top_chunk": {"kb_number": "KB0012345", "rrf_score": 0.032, "rerank_score": 0.94}
+    },
+    "generation": {
+        "model": "llama3",
+        "confidence": 0.88,
+        "needs_escalation": false,
+        "tokens_used": 1847,
+        "latency_ms": 2340
+    },
+    "cache": "MISS",
+    "guardrails": {"injection_detected": false, "pii_detected": false}
+}
+```
+
+Agregar endpoint `GET /sessions?last=20` que devuelva las últimas 20 sesiones para debugging.
+
+En el frontend, agregar un link "View session log" que abre una tabla con las últimas sesiones.
+
+---
+
+### Upgrade 12: Feedback Loop (Sección 11, 35 de la guía)
+
+**Concepto:** Los agentes pueden marcar si la respuesta fue útil o no. Eso alimenta el golden dataset automáticamente.
+
+**Implementación en `rag_frontend.html` + `rag_search.py`:**
+
+1. En el frontend, después de cada respuesta, agregar dos botones: 👍 y 👎.
+2. Al hacer click, enviar `POST /feedback` con: `{session_id, rating: "positive"|"negative", query, kb_numbers_returned}`.
+3. Guardar en `data/logs/feedback.jsonl`.
+4. Los queries con feedback "positive" son candidatos directos para el golden dataset (query + kb_numbers ya verificados por un humano).
+5. Agregar un script `build_golden_from_feedback.py` que lee `feedback.jsonl`, toma los positivos, y los agrega a `golden_dataset.json`.
+
+---
+
+### Upgrade 13: Confidence-Based Degradación Elegante (Sección 11 de la guía — Fallbacks)
+
+**Concepto:** Cuando el sistema no está seguro, debe degradar elegantemente en vez de dar una respuesta mala.
+
+**Implementación en `rag_search.py`:**
+
+Tres niveles según el score de confianza:
+
+```python
+def determine_response_tier(confidence: float, top_rrf_score: float) -> str:
+    if confidence >= 0.8 and top_rrf_score >= 0.025:
+        return "full_response"       # Respuesta completa con message + notes
+    elif confidence >= 0.5:
+        return "cautious_response"   # Respuesta con disclaimer + KB links
+    else:
+        return "escalation"          # No responder, sugerir escalación
+```
+
+- **full_response:** Respuesta normal con suggested_message, notes, y prompt.
+- **cautious_response:** "I found some possibly relevant articles but I'm not confident. Please review: [KB links]. Consider escalating if these don't help."
+- **escalation:** "I don't have enough information to answer this. Recommended escalation to: [escalation_team from KB metadata]."
+
+En el frontend, mostrar un badge de color: verde (full), amarillo (cautious), rojo (escalation).
+
+---
+
+### Upgrade 14: Query Enhancement — Multi-Query (Sección 7 de la guía)
+
+**Concepto:** Un solo query puede ser ambiguo. Generar 2-3 reformulaciones y buscar con todas, luego fusionar resultados.
+
+**Implementación en `rag_search.py`:**
+
+Solo si Ollama está corriendo. Si no, skip.
+
+```python
+def generate_query_variants(query: str) -> list[str]:
+    """Genera 2-3 reformulaciones del query original."""
+    prompt = f"""Generate 3 different ways to search for information about this IT support issue.
+Each variant should use different words but mean the same thing.
+Return ONLY a JSON array of strings, nothing else.
+
+Original query: {query}"""
+
+    # Call Ollama
+    response = requests.post(f"{OLLAMA_BASE_URL}/api/generate",
+        json={"model": "llama3", "prompt": prompt, "format": "json",
+              "stream": False, "options": {"temperature": 0.3, "num_predict": 150}},
+        timeout=30)
+
+    variants = json.loads(response.json()["response"])
+    return [query] + variants[:2]  # original + 2 variants max
+```
+
+Luego buscar con CADA variante, y fusionar todos los resultados con RRF (cada variante es un "retriever" adicional).
+
+**Flag para activar/desactivar:** `ENABLE_MULTI_QUERY = True` en config. Desactivar para queries donde la velocidad importa más que la cobertura.
+
+---
+
+### Upgrade 15: Metadata Filters en Retrieval (Sección 8 de la guía — Routing)
+
+**Concepto:** `rag_search.py` ya detecta el sistema (Five9, Okta, etc.) y el segmento (retail/corporate). Usar eso para FILTRAR resultados ANTES del ranking.
+
+**Implementación:**
+
+Actualmente `rag_search.py` detecta el sistema. El upgrade es:
+1. Si el sistema fue detectado con alta confianza, filtrar los resultados post-RRF para solo incluir chunks del mismo sistema.
+2. Si fue detectado con baja confianza, NO filtrar (dejar que el RRF score decida).
+3. Agregar al endpoint: `POST /query` acepta campo opcional `system_filter` y `segment_filter`.
+
+```python
+def apply_metadata_filters(chunks: list[dict], system: str = None,
+                           segment: str = None, confidence: float = 0.0) -> list[dict]:
+    if not system or confidence < 0.7:
+        return chunks  # no filtrar si baja confianza
+
+    filtered = [c for c in chunks if system.lower() in c.get("system", "").lower()]
+
+    # Si filtramos demasiado, devolver sin filtro
+    if len(filtered) < 2:
+        return chunks
+
+    return filtered
+```
+
+---
+
+### Upgrade 16: Prompt Versioning (Sección 36 de la guía — Experiment Tracking)
+
+**Concepto:** Versionar los prompts para poder comparar resultados entre versiones.
+
+**Implementación:**
+
+1. Crear carpeta `prompts/` con archivos por versión:
+   - `prompts/system_v1.txt` — prompt original
+   - `prompts/system_v2.txt` — con suggested_message/notes
+   - `prompts/system_v3.txt` — con guardrails mejorados
+
+2. En `config.py`: `ACTIVE_PROMPT_VERSION = "v2"`
+
+3. En `rag_search.py`: cargar el prompt desde el archivo según la versión activa.
+
+4. En session traces: loguear qué versión de prompt se usó.
+
+5. En `evaluate.py`: poder evaluar con diferentes versiones de prompt:
+   ```bash
+   python evaluate.py --prompt-version v1
+   python evaluate.py --prompt-version v2
+   ```
+
+---
+
+## Tabla resumen: Conceptos de la guía → Upgrades
+
+| Concepto (Sección guía) | Upgrade # | Ya existía? | Complejidad |
+|---|---|---|---|
+| Pipeline RAG completo (6) | Base | ✅ Ya existe | — |
+| Vector DB / FAISS (4) | Base | ✅ Ya existe | — |
+| Chunking avanzado (5) | Upgrade 2 (FINAL) | ⬆️ Semantic chunking | Media |
+| Metadata enrichment (52) | Upgrade 2 (FINAL) | ⬆️ Enriched text | Baja |
+| Keyword blindness (2) | Upgrade 1 (FINAL) | ⬆️ BM25 hybrid | Media |
+| Hybrid Search + RRF (2, 6) | Upgrade 1 (FINAL) | ⬆️ RRF fusion | Media |
+| Routing (8) | Upgrade 15 | ⬆️ Metadata filters | Baja |
+| Reranking (9, 51) | **Upgrade 8** | 🆕 Cross-encoder | Media |
+| Cache (6, 11) | **Upgrade 9** | 🆕 Query cache | Baja |
+| Defense in Depth / Guardrails (37) | **Upgrade 10** | 🆕 Input/output validation | Media |
+| Session Tracing (11) | **Upgrade 11** | ⬆️ Structured logging | Baja |
+| Feedback Loop (11, 35) | **Upgrade 12** | 🆕 Thumbs up/down | Baja |
+| Fallbacks / Degradación (11) | **Upgrade 13** | 🆕 Confidence tiers | Baja |
+| Query Translation / Multi-Query (7) | **Upgrade 14** | 🆕 Query variants | Media |
+| Metadata Filters pre-retrieval (8) | **Upgrade 15** | ⬆️ System/segment filter | Baja |
+| Prompt Versioning (36) | **Upgrade 16** | 🆕 Version files | Baja |
+| Golden Dataset (35) | Upgrade 6 (FINAL) | 🆕 Evaluation | Media |
+| Ragas evaluation (35) | Upgrade 6 (FINAL) | 🆕 Recall@k, MRR | Media |
+| Embedding comparison (4) | Upgrade 6 (FINAL) | 🆕 Model comparison | Media |
+| Summaries per article | Upgrade 3 (FINAL) | 🆕 LLM summaries | Media |
+| Direct LLM generation | Upgrade 4 (FINAL) | 🆕 Ollama generation | Media |
+| Suggested msg/notes/prompt | Upgrade 4 (FINAL) | 🆕 3 output formats | Media |
+| Incremental updates | Upgrade 5 (FINAL) | 🆕 Hash-based | Media |
+| Structured output / JSON (17, 42) | Upgrade 4 (FINAL) | ⬆️ JSON format | Baja |
+| QA / Tests | Upgrade 7 (FINAL) | 🆕 pytest | Media |
+| Anti-hallucination prompt (37) | Upgrade 4 (FINAL) | ⬆️ System prompt | Baja |
+| Factual chunk separation | Upgrade 2 (FINAL) | 🆕 Dedicated chunks | Baja |
+
+---
+
+## Conceptos que NO se pueden implementar (y por qué)
+
+| Concepto | Por qué no aplica aquí |
 |---|---|
-| `GPT_INSTRUCTIONS.txt` | Master config for the Custom GPT: role, App ID rules, language, Slack/SNOW format, policies, troubleshooting logic, when to escalate/close |
-| `ESD_formatted_notes_and_messages.txt` | Bank of real message and note examples in Lalo/ESD style — style dataset |
-| `ESD_L1_reference_playbook.txt` | Operations playbook: INC/REQ classification, language, escalations, closures, conventions |
-| `ESD_L1_Master_Reference.txt` | Broad L1 operations reference |
-| `ESD_Lalo_Complete_Reference.txt` | Consolidated rules, templates, style, practices — optimized for GPT knowledge |
-| `ESD_Lalo_Scenario_Learnings.txt` | Memory of real cases and exceptions (corrected GPT errors, e.g., don't apply generic troubleshooting to Five9 audio) |
-| `all_kbs_combined.txt` / `all_kbs_part_1.txt` / `all_kbs_part_2.txt` | Consolidated KBs for loading into Custom GPT |
-| `feedback` | Feedback data |
-| `SCAN_REPORT` | KB scan report |
-| `KB_Sanitizer_CLEAN` / `KB_Sanitizer_SCAN` | KB sanitization scripts |
+| RAPTOR / Multi-Rep Indexing (9) | Requiere un corpus mucho más grande. Con 580 artículos, chunking semántico + enrichment es suficiente. |
+| ColBERT (9) | 16x más storage, complejidad alta. No justificado para este tamaño de corpus. |
+| LoRA / Fine-tuning (38) | No estamos fine-tuneando un modelo, estamos haciendo RAG. |
+| HyDE (7) | Podría implementarse pero agrega latencia y con hybrid search ya cubrimos queries vagas. Candidato futuro si Multi-Query no alcanza. |
+| Active RAG / CRAG / Self-RAG (10) | Requiere múltiples llamadas al LLM por query (grading de relevancia, grading de alucinación). Muy lento con modelos locales. Candidato para cuando tengamos Azure OpenAI. |
+| LangGraph state machine (10) | Overkill para este pipeline. El flujo es lineal con branching simple (confidence tiers). Si el proyecto crece a multi-step agents, ahí sí. |
+| Computer Vision / YOLO | No aplica — no hay imágenes en este proyecto. |
+| Kubernetes / microservicios | Es un POC local. Cuando se despliegue en Azure App Service, sigue siendo un monolito simple. |
+| Azure AI Search migration | Requiere acceso a Azure y presupuesto. Es Fase 2. |
 
 ---
 
-## What to upgrade
-
-The current system is semi-manual: the agent pastes a ticket, the system suggests KBs and generates a prompt, then the agent copies that prompt into a Custom GPT. The upgrades make it more automated and add quality measurement.
-
-### Upgrade 1: Add BM25 hybrid search to `build_rag.py`
-
-**Current:** FAISS semantic search only (with TF-IDF fallback).
-**Upgrade:** Keep FAISS semantic search AND add a BM25 index. At search time, run both and fuse with Reciprocal Rank Fusion (RRF).
-
-Changes to `build_rag.py`:
-- After building FAISS index, also build a BM25Okapi index from the raw text of each KBRecord.
-- Tokenize: lowercase, split by `\w+`, remove English stopwords.
-- Serialize BM25 index to `rag_artifacts/kb_bm25.pkl` using pickle.
-- Add `rank-bm25>=0.2.2` to dependencies.
-
-Changes to `rag_search.py`:
-- On startup, load both FAISS index AND BM25 pickle.
-- When searching, run both:
-  - FAISS: embed query with same model, search top-10.
-  - BM25: tokenize query, get top-10 scores.
-- Fuse with RRF: `score(doc) = sum(1/(60 + rank_i(doc)))` for each retriever where the doc appears.
-- Return top-5 after fusion.
-- Add `matched_by` field to results: ["semantic"], ["bm25"], or ["semantic", "bm25"].
-
-**Why:** Semantic search misses exact matches (KB numbers, error codes like "0x80070005", product names). BM25 catches those. Together they cover both natural language and exact keyword queries.
-
----
-
-### Upgrade 2: Add semantic chunking to `build_rag.py`
-
-**Current:** Articles are likely indexed as whole documents or with basic splitting.
-**Upgrade:** Add semantic chunking that splits articles where the embedding similarity between consecutive sentences drops.
-
-Changes to `build_rag.py`:
-- Before embedding, split each article body into sentences (use nltk.sent_tokenize).
-- Embed all sentences with the same model.
-- Calculate cosine similarity between consecutive sentences.
-- Cut where similarity falls below the 25th percentile.
-- If a resulting chunk exceeds 800 chars, subdivide by size.
-- Enrich each chunk before embedding: prepend article title, kb_number, system, category.
-- Also extract factual chunks: scan for phone numbers, URLs, emails, error codes with regex. Put them in dedicated chunks tagged as `chunk_type: "factual"`.
-- Add `nltk>=3.8` to dependencies.
-
----
-
-### Upgrade 3: Add summaries per article
-
-**Current:** No summaries.
-**Upgrade:** If Ollama is available locally, generate a 2-3 sentence summary per article. Store in `kb_records.json`. Include summary in the enriched text that gets embedded.
-
-Changes to `build_rag.py`:
-- Add optional step: for each article, call Ollama (`llama3` or `mistral`) to generate a summary.
-- If Ollama is not running, skip summaries gracefully (print warning, continue without them).
-- Store summary in each KBRecord.
-- Include summary in the enriched text: `Article: {title} ({kb_number})\nSystem: {system}\nSummary: {summary}\nContent: {chunk_text}`
-- Add `--no-summaries` flag to skip this step.
-
----
-
-### Upgrade 4: Direct LLM generation (bypass manual GPT copy-paste)
-
-**Current:** System generates a prompt that the agent copies into the Custom GPT manually.
-**Upgrade:** Add an OPTIONAL mode where the system calls a local LLM (Ollama) directly and generates the full response including suggested message, notes, and the fallback prompt for manual GPT.
-
-Changes to `rag_search.py`:
-- Add a new endpoint: `POST /generate` that takes the query + retrieved chunks and calls Ollama directly.
-- Uses this system prompt (incorporates the style from `GPT_INSTRUCTIONS.txt` and `ESD_formatted_notes_and_messages.txt`):
-
-```
-You are Lalo's AI assistant for Oportun ESD L1 support.
-
-For every ticket, provide ALL of the following in JSON:
-
-1. "answer": Technical answer for the agent. Cite KB numbers. Include troubleshooting steps.
-
-2. "suggested_message": Professional, empathetic message to send to the end user via Slack.
-   - Do NOT include KB numbers (users don't see those)
-   - Use simple language, step-by-step if applicable
-   - Match the ESD team's tone (professional but warm)
-   - End with "If you continue to experience issues, please let us know."
-   - Keep under 150 words
-
-3. "suggested_notes": Work notes for ServiceNow ticket.
-   - Technical and concise, bullet points
-   - Include KB numbers referenced
-   - Include: what was found, what was suggested, resolution status
-   - End with "Source: LLM-ESD RAG"
-
-4. "llm_prompt": A ready-to-paste prompt for the Custom GPT. Include:
-   - The relevant KB article content (actual text, not just numbers)
-   - The user's original question/issue
-   - Instructions for the output format (Slack message, email, work notes, etc.)
-   - Note about tone (professional, empathetic, ESD style)
-
-RULES:
-- ONLY use information from the provided KB articles.
-- If the articles don't contain the answer: say so in all fields, recommend escalation.
-- NEVER invent phone numbers, URLs, IDs, or any factual data.
-- Always cite KB numbers in answer and suggested_notes (NOT in suggested_message).
-
-RESPOND IN VALID JSON ONLY.
-```
-
-- If Ollama is not running, the endpoint returns an error message suggesting to use the manual prompt method instead.
-- The existing prompt-generation flow continues to work as before.
-
-Changes to `rag_frontend.html`:
-- Add a new section after "GENERATED GPT PROMPT": **"5. AI-GENERATED RESPONSE"**
-- A button "Generate with Local LLM" that calls `POST /generate`.
-- If successful, show four collapsible sections: Answer, Suggested Message (with Copy button), Suggested Notes (with Copy button), LLM Prompt (with Copy button).
-- If the server returns an error (Ollama not running), show a message: "Local LLM not available. Use the GPT Prompt above instead."
-- The existing flow (Parse Ticket → KB Suggestions → GPT Prompt) remains untouched.
-
----
-
-### Upgrade 5: Incremental KB updates
-
-**Current:** Full rebuild every time (`build_rag.py` processes all 580 files).
-**Upgrade:** Only re-process new or modified files.
-
-Changes to `build_rag.py`:
-- On each run, compute MD5 hash of each `.txt` file.
-- Store hashes in `rag_artifacts/file_hashes.json`.
-- Compare with previous hashes: classify as NEW, MODIFIED, UNCHANGED, DELETED.
-- Only parse/embed NEW and MODIFIED articles.
-- Rebuild FAISS index from full chunk set (FAISS doesn't support in-place deletion).
-- Rebuild BM25 index.
-- Add `--full` flag to force full rebuild.
-- Print summary: "3 new, 7 modified, 1 deleted, 569 unchanged (skipped)".
-
----
-
-### Upgrade 6: Evaluation and golden dataset
-
-**Current:** No way to measure retrieval quality.
-**Upgrade:** Add evaluation scripts and a golden dataset.
-
-New file `evaluate.py`:
-- Load `golden_dataset.json` (query + expected KB number pairs).
-- Run each query through the retriever in three modes: semantic-only, bm25-only, hybrid.
-- Calculate Recall@1, Recall@5, MRR for each mode.
-- Print comparison table.
-- Save results to `rag_artifacts/eval_results.json`.
-
-New file `golden_dataset.json`:
-- Auto-generate a template from existing articles (title + symptoms → suggested query).
-- User edits queries to be natural language ("agent cant login five9" instead of "How to Reset Five9 Agent Password").
-- Support importing real queries from `ESD_formatted_notes_and_messages.txt` — parse out the original issues/questions from the examples.
-
-New file `compare_models.py`:
-- Compare all-MiniLM-L6-v2 (384 dims) vs all-mpnet-base-v2 (768 dims) on the golden dataset.
-- Print Recall@5 and MRR for each.
-- Recommend which model to use.
-
----
-
-### Upgrade 7: QA / Tests
-
-New folder `tests/` with pytest tests:
-
-**test_parser.py:** Test tag parsing, encoding artifact fixing, KB number extraction from filenames.
-
-**test_search.py:** Test that searching "five9 password" returns Five9 articles. Test that searching "KB0012345" returns that specific article (BM25 should catch this). Test that results have required fields (kb_number, title, score, matched_by). Test that RRF scores are in descending order.
-
-**test_generator.py:** Test JSON response parsing. Test that low confidence triggers escalation flag. Test that invalid JSON falls back gracefully.
-
-**test_integration.py:** Full pipeline test: parse ticket text → search → verify results make sense. Requires indexes to exist (skip if not built).
-
-Add `pytest>=7.0` to dependencies.
-
-Run: `pytest tests/ -v`
-
----
-
-## Execution order
-
-```bash
-# 1. Install new dependencies
-pip install rank-bm25 nltk pytest
-
-# 2. Download NLTK data
-python -c "import nltk; nltk.download('punkt_tab')"
-
-# 3. Rebuild indexes with all upgrades (full rebuild first time)
-python build_rag.py --full
-
-# 4. Start server (existing launcher)
-start_rag.cmd
-# or: start_rag.ps1
-
-# 5. Test in browser: http://localhost:8080
-#    - Paste a ticket
-#    - Verify KB suggestions now show "matched_by: [semantic, bm25]"
-#    - Try "Generate with Local LLM" button (if Ollama is running)
-
-# 6. Edit golden_dataset.json with real queries
-
-# 7. Run evaluation
-python evaluate.py
-
-# 8. Compare embedding models
-python compare_models.py
-
-# 9. Run tests
-pytest tests/ -v
-
-# 10. Incremental update after KB changes
-python build_rag.py
-# (only processes new/modified files)
-```
-
----
-
-## What NOT to do
-
-- DO NOT rewrite `rag_search.py` from scratch. Upgrade it in place.
-- DO NOT rewrite `rag_frontend.html` from scratch. Add new sections to the existing UI.
-- DO NOT change the existing prompt generation flow. It must continue working exactly as before.
-- DO NOT modify files in `SNOW_KB_CLEAN/` or `SNOW KB/`. Read-only.
-- DO NOT remove or rename any existing files without being asked.
-- DO NOT call external APIs (OpenAI, Azure). Local only (sentence-transformers + Ollama).
-- DO NOT change the localhost port (8080) — it's what `start_rag` scripts use.
-- DO NOT break the existing `KBRecord` structure — extend it with new fields (summary, chunks, bm25_tokens).
-
----
-
-## Summary of changes
-
-| What | File(s) | Type |
-|---|---|---|
-| BM25 hybrid search | `build_rag.py`, `rag_search.py` | Upgrade existing |
-| Semantic chunking | `build_rag.py` | Upgrade existing |
-| Summaries per article | `build_rag.py` | Upgrade existing |
-| Direct LLM generation | `rag_search.py`, `rag_frontend.html` | Upgrade existing |
-| Suggested message/notes/prompt | `rag_search.py`, `rag_frontend.html` | Upgrade existing |
-| Incremental KB updates | `build_rag.py` | Upgrade existing |
-| Evaluation | `evaluate.py` (new), `golden_dataset.json` (new) | New files |
-| Model comparison | `compare_models.py` (new) | New file |
-| QA tests | `tests/` folder (new) | New files |
+## Orden de implementación sugerido
+
+Codex debería implementar en este orden (de mayor a menor impacto con menor esfuerzo):
+
+1. **Upgrades 1-7 del FINAL** (ya los tiene) — BM25, chunking, summaries, generation, updates, eval, tests
+2. **Upgrade 9: Cache** — muy fácil, impacto inmediato en velocidad
+3. **Upgrade 12: Feedback** — muy fácil, alimenta golden dataset
+4. **Upgrade 11: Session tracing** — fácil, necesario para debugging
+5. **Upgrade 13: Degradación elegante** — fácil, mejora UX
+6. **Upgrade 15: Metadata filters** — fácil, ya tiene la detección
+7. **Upgrade 10: Guardrails** — medio, importante para producción
+8. **Upgrade 8: Reranking** — medio, mejora calidad si recall es bueno pero respuestas malas
+9. **Upgrade 16: Prompt versioning** — fácil, buena práctica
+10. **Upgrade 14: Multi-Query** — medio, requiere Ollama, mejora cobertura
