@@ -1,393 +1,279 @@
-I need you to do 3 things in order. Read ALL of this context first before starting.
+# CODEX INSTRUCTIONS — LLM-ESD UPGRADE
 
-=== MY OPERATIONAL CONTEXT ===
+## Read this entire file before writing any code.
 
-I am Lalo (Jorge Eduardo Ayala Tamayo), an ESD L1 support agent at Oportun Mexico. I support:
-- Retail/call center agents in USA and MX who process loans using Zeus, Five9, Payments, etc.
-- Corporate/internal employees at Oportun who use standard tools
+## What already exists
 
-Tickets come via ServiceNow (progressfin.service-now.com):
-- INC (Incidents) - technical problems
-- REQ (Requests) - access, onboarding, changes
-- TASK - operational tasks assigned directly to me
+This is NOT a greenfield project. There is already a working RAG system in:
+`C:\Users\jorge.ayala\OneDrive - Oportun\Desktop\LLM-ESD-LALO\`
 
-CRITICAL RULE ABOUT APP ID / CLIENT ID / LOAN ID:
-These fields are ONLY relevant when the TICKET'S SYSTEM involves customer accounts (Zeus, Payments, OA, Oportun App, PNM, rACH, Online Account, Lending, GCP, Encapture). A retail agent can ALSO report corporate issues (VPN down, mouse broken, Outlook error) — in those cases NEVER ask for App ID. The SYSTEM of the ticket determines the fields, NOT who reports it.
+### Existing infrastructure (DO NOT break these):
 
-SYSTEM CLASSIFICATION:
-- Retail/loan systems (may need App ID/Client ID): Zeus, Five9, Payments, PNM, rACH, OA, Online Account, Oportun App, Cresta, GCP, Lending, Encapture
-- Corporate systems (NEVER App ID): Hardware, Windows, VPN, Okta, Zoom, Slack, Teams, Azure, WVD, Citrix, Chrome, Outlook, Excel, O365, SharePoint, Active Directory, Workday, Zscaler
-- Operations (close/redirect, not technical): Zeus-Direccion/VIN, Cambios Operativos
+| File | What it does | Status |
+|---|---|---|
+| `build_rag.py` | Parses enriched `.txt` from SNOW_KB_CLEAN, creates KBRecord objects, generates embeddings with sentence-transformers (all-MiniLM-L6-v2), builds FAISS index. Falls back to TF-IDF if semantic model fails. Outputs: `kb_faiss.index`, `kb_records.json`, `kb_meta.json` | WORKING — upgrade |
+| `rag_search.py` | Backend server on localhost:8080. Detects system/issue from pasted ticket text, classifies retail/corporate/operational, searches relevant KBs, builds sanitized prompt for GPT. | WORKING — upgrade |
+| `rag_frontend.html` | Web UI: paste Slack bridge message → Parse Ticket → Detected Context → KB Suggestions → Generated GPT Prompt with Copy button | WORKING — upgrade |
+| `start_rag.ps1` / `start_rag.cmd` | Launch server on localhost:8080, kill old processes, open Chrome | WORKING — keep |
+| `models/all-MiniLM-L6-v2` | Local embedding model already downloaded | WORKING — keep |
+| `rag_artifacts/` | FAISS index + metadata already built | WORKING — rebuild with upgrades |
+| `SNOW_KB_CLEAN/` | ~580 enriched `.txt` files with tags | WORKING — read only |
+| `SNOW KB/` | Original KB files (pre-enrichment) | WORKING — read only |
+| `index.html` / `index_v2.html` | Older UI versions, `rag_search.py` uses `index_v2.html` for Zoom link context | Keep for reference |
 
-ACTION TYPES I PERFORM:
-A) First Contact - reach out to user, confirm issue persists, ask for info
-B) Troubleshooting - standard Zscaler/Chrome/Okta steps, or system-specific from KB
-C) Not an Issue - close ticket, redirect to correct process (operations)
-D) Escalation - technical note to specialized team
-E) Closure - resolved, close ticket
-F) Hardware - escalate to EUS team
+### Knowledge files for the Custom GPT:
 
-MESSAGE FORMAT RULES:
-- Slack messages to users: EN or ES (I choose per ticket). Friendly tone with emojis. Structure:
-  * Greeting with :pika-wave: and my name (Lalo from IT Support)
-  * Reference ticket number
-  * Description of what I see / what I need
-  * Steps to try (if troubleshooting)
-  * Zoom link: https://oportun.zoom.us/my/lalo.esd
-  * Warning: "This is the first contact (up to 3 attempts, one per day). No response in 3 business days = auto-close."
-  * "Thank you! Best regards, ESD"
+| File | What it is |
+|---|---|
+| `GPT_INSTRUCTIONS.txt` | Master config for the Custom GPT: role, App ID rules, language, Slack/SNOW format, policies, troubleshooting logic, when to escalate/close |
+| `ESD_formatted_notes_and_messages.txt` | Bank of real message and note examples in Lalo/ESD style — style dataset |
+| `ESD_L1_reference_playbook.txt` | Operations playbook: INC/REQ classification, language, escalations, closures, conventions |
+| `ESD_L1_Master_Reference.txt` | Broad L1 operations reference |
+| `ESD_Lalo_Complete_Reference.txt` | Consolidated rules, templates, style, practices — optimized for GPT knowledge |
+| `ESD_Lalo_Scenario_Learnings.txt` | Memory of real cases and exceptions (corrected GPT errors, e.g., don't apply generic troubleshooting to Five9 audio) |
+| `all_kbs_combined.txt` / `all_kbs_part_1.txt` / `all_kbs_part_2.txt` | Consolidated KBs for loading into Custom GPT |
+| `feedback` | Feedback data |
+| `SCAN_REPORT` | KB scan report |
+| `KB_Sanitizer_CLEAN` / `KB_Sanitizer_SCAN` | KB sanitization scripts |
 
-- SNOW comments/messages to user (formal, like email): EN or ES (I choose per ticket). Includes Subject line. More formal than Slack.
+---
 
-- SNOW work notes (internal, only support team sees): ALWAYS ENGLISH, no exceptions. Format:
-  "Contacted [caller] regarding [short description].
-  System: [system]
-  Troubleshooting performed: [steps]
-  Result: [outcome]
-  [If not resolved]: Issue persists despite all troubleshooting steps attempted.
-  [If resolved]: Issue resolved. [description]. Ticket closed.
-  [If escalating]: Team, could you please assist us?"
+## What to upgrade
 
-- Escalation notes: ALWAYS ENGLISH, no exceptions. Structure:
-  * Issue Short Summary
-  * Customer Information (App ID, Client ID ONLY if retail system)
-  * Issue Summary + Impact
-  * Troubleshoot Steps performed + Result
-  * Scope: single user / multiple / entire campaign
-  * "Team, could you please assist us?"
-  * Reference: KB article if applicable
+The current system is semi-manual: the agent pastes a ticket, the system suggests KBs and generates a prompt, then the agent copies that prompt into a Custom GPT. The upgrades make it more automated and add quality measurement.
 
-- Closure notes: ALWAYS ENGLISH, no exceptions. Brief.
+### Upgrade 1: Add BM25 hybrid search to `build_rag.py`
 
-STANDARD TROUBLESHOOTING (70% of tickets):
-1. Confirm if issue persists
-2. Ask for hostname
-3. Ask for screenshot of error
-4. Zscaler: speedtest, connectivity check, Repair, Restart, Update
-5. Clear Chrome history: All Time, Advanced, ALL checkboxes
-6. Close Chrome completely
-7. Re-login from Okta
-8. Try different device/browser
+**Current:** FAISS semantic search only (with TF-IDF fallback).
+**Upgrade:** Keep FAISS semantic search AND add a BM25 index. At search time, run both and fuse with Reciprocal Rank Fusion (RRF).
 
-=== TASK 1: BUILD THE RAG ENGINE ===
+Changes to `build_rag.py`:
+- After building FAISS index, also build a BM25Okapi index from the raw text of each KBRecord.
+- Tokenize: lowercase, split by `\w+`, remove English stopwords.
+- Serialize BM25 index to `rag_artifacts/kb_bm25.pkl` using pickle.
+- Add `rank-bm25>=0.2.2` to dependencies.
 
-1. Install sentence-transformers and faiss-cpu using pip
-2. Read all 580 enriched .txt files from SNOW_KB_CLEAN folder
-3. Parse tags: [TITLE], [SYSTEM], [KEYWORDS], [SYNONYMS], [SYMPTOMS], [TROUBLESHOOTING], [RESOLUTION], [ESCALATION_TEAM], [ESCALATION]
-4. Create embeddings with sentence-transformers (all-MiniLM-L6-v2)
-5. Build FAISS index
-6. Save the index and parsed data so it can be reloaded without reprocessing
+Changes to `rag_search.py`:
+- On startup, load both FAISS index AND BM25 pickle.
+- When searching, run both:
+  - FAISS: embed query with same model, search top-10.
+  - BM25: tokenize query, get top-10 scores.
+- Fuse with RRF: `score(doc) = sum(1/(60 + rank_i(doc)))` for each retriever where the doc appears.
+- Return top-5 after fusion.
+- Add `matched_by` field to results: ["semantic"], ["bm25"], or ["semantic", "bm25"].
 
-=== TASK 2: FIX THE HTML GENERATOR ===
+**Why:** Semantic search misses exact matches (KB numbers, error codes like "0x80070005", product names). BM25 catches those. Together they cover both natural language and exact keyword queries.
 
-Read index.html in the LLM-ESD-LALO folder. This is my ESD Generator v1. Fix these bugs using the operational context above:
-- Escalation notes currently allow Spanish — they must ALWAYS be English only, no option to change
-- Closure notes and work notes must ALWAYS be English only, no option to change
-- Slack messages to users: can be English OR Spanish (user chooses with toggle)
-- SNOW comments/messages to users: can be English OR Spanish (user chooses with toggle)
-- It confuses customer vs agent — it asks for App ID on corporate issues like Hardware/VPN. App ID fields should ONLY appear when the selected SYSTEM is a retail/loan system
-- Operations systems (Zeus-Direccion/VIN, Cambios Operativos) should only appear in closure/redirect actions, not in troubleshooting or escalation
-- Save the fixed version as index_v2.html
+---
 
-=== TASK 3: CONNECT RAG + HTML TEMPLATES ===
+### Upgrade 2: Add semantic chunking to `build_rag.py`
 
-Build rag_search.py that:
-- Loads the FAISS index from Task 1
-- Also reads index_v2.html to understand my message templates and formatting
-- Interactive loop:
-  a) I type issue description (or paste Short Description from ticket)
-  b) Shows top 5 KB matches with relevance %
-  c) I pick one (1-5)
-  d) Asks: caller name, language (EN/ES), action type (first contact / troubleshooting / escalation / closure / not-an-issue / hardware)
-  e) Auto-detects retail vs corporate from the KB's SYSTEM tag
-  f) Generates outputs matching my HTML generator style:
-     - Slack message (EN or ES) with troubleshooting steps from the matched KB
-     - SNOW comments/message to user (EN or ES) more formal than Slack
-     - SNOW work notes (always English, no exceptions)
-     - Escalation notes (always English, no exceptions) if escalation action — includes App ID fields ONLY for retail systems
-     - Closure notes (always English, no exceptions) if closure action
-  g) Each output is clearly separated and ready to copy-paste
-  h) Loops for next query
-- Run it and test with: "Zeus slow for retail agent", "VPN not connecting", "Five9 no audio"
+**Current:** Articles are likely indexed as whole documents or with basic splitting.
+**Upgrade:** Add semantic chunking that splits articles where the embedding similarity between consecutive sentences drops.
 
-Start with Task 1, then Task 2, then Task 3.
+Changes to `build_rag.py`:
+- Before embedding, split each article body into sentences (use nltk.sent_tokenize).
+- Embed all sentences with the same model.
+- Calculate cosine similarity between consecutive sentences.
+- Cut where similarity falls below the 25th percentile.
+- If a resulting chunk exceeds 800 chars, subdivide by size.
+- Enrich each chunk before embedding: prepend article title, kb_number, system, category.
+- Also extract factual chunks: scan for phone numbers, URLs, emails, error codes with regex. Put them in dedicated chunks tagged as `chunk_type: "factual"`.
+- Add `nltk>=3.8` to dependencies.
 
+---
 
-The TF-IDF fallback is working but the quality is too low. I need the sentence-transformers model for better semantic matching. 
+### Upgrade 3: Add summaries per article
 
-Try downloading all-MiniLM-L6-v2 with these approaches:
-1. First try: pip install sentence-transformers and then download the model with SSL verification disabled
-2. If that fails: try downloading the model files directly from https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2 using curl or wget with --no-check-certificate
-3. If that fails: try using the mirror at https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2
-4. If nothing works: try a smaller model like all-MiniLM-L3-v2
+**Current:** No summaries.
+**Upgrade:** If Ollama is available locally, generate a 2-3 sentence summary per article. Store in `kb_records.json`. Include summary in the enriched text that gets embedded.
 
-Once the model is available locally, rebuild the FAISS index with real embeddings instead of TF-IDF and re-test with "station id not assigned" - the correct match should be "Five9 - Access, Audio & in-app Issues"
+Changes to `build_rag.py`:
+- Add optional step: for each article, call Ollama (`llama3` or `mistral`) to generate a summary.
+- If Ollama is not running, skip summaries gracefully (print warning, continue without them).
+- Store summary in each KBRecord.
+- Include summary in the enriched text: `Article: {title} ({kb_number})\nSystem: {system}\nSummary: {summary}\nContent: {chunk_text}`
+- Add `--no-summaries` flag to skip this step.
 
+---
 
------------------------------------------------
+### Upgrade 4: Direct LLM generation (bypass manual GPT copy-paste)
 
+**Current:** System generates a prompt that the agent copies into the Custom GPT manually.
+**Upgrade:** Add an OPTIONAL mode where the system calls a local LLM (Ollama) directly and generates the full response including suggested message, notes, and the fallback prompt for manual GPT.
 
-I need you to generate a complete reference document of ALL the message templates and note formats I use in my ESD L1 work. You already know my style from all our previous conversations in this project. Generate:
+Changes to `rag_search.py`:
+- Add a new endpoint: `POST /generate` that takes the query + retrieved chunks and calls Ollama directly.
+- Uses this system prompt (incorporates the style from `GPT_INSTRUCTIONS.txt` and `ESD_formatted_notes_and_messages.txt`):
 
-1. SLACK MESSAGES (10 examples minimum):
-   - First contact retail ES
-   - First contact retail EN
-   - First contact corporate ES
-   - First contact corporate EN
-   - Troubleshooting follow-up ES/EN
-   - 2nd/3rd contact ES/EN
-   - Closure ES/EN
-   - Not an issue / redirect ES/EN
-
-2. SNOW COMMENTS TO USER (5 examples):
-   - First contact formal EN/ES
-   - Follow-up EN/ES
-   - Closure EN/ES
-
-3. SNOW WORK NOTES - internal (5 examples):
-   - Escalation note (with App ID for retail)
-   - Escalation note (corporate, no App ID)
-   - Closure note
-   - Contact log
-
-4. For each template mark: system type, language, action type
-
-Generate them exactly how I like them - with my emojis, my tone, my structure. You know how I write.
-
-Now based on everything we've worked on together, give me the TOP 20 most common ticket scenarios I handle and for each one give me:
-
-1. Short description (how it appears in SNOW)
-2. System
-3. Retail or Corporate
-4. What I usually do (troubleshoot / escalate / close / redirect)
-5. The exact Slack message I would send (ES)
-6. The exact SNOW work note I would write (EN)
-7. If escalation: the exact escalation note (EN)
-8. Escalation team
-
-These should be the cases I see almost every day - the ones I could do with my eyes closed.
-
-Also give me all the corporate rules and policies I follow in my ESD work:
-- SLA timelines (when to close, when to escalate)
-- Contact attempt rules (3 attempts, 1 per day, 3 business days)
-- What goes in English vs Spanish
-- When to escalate vs close vs redirect
-- Which teams handle which systems
-- Any formatting rules for SNOW (work notes vs comments vs additional comments)
-- Ticket classification rules (INC vs REQ vs TASK)
-- HAI rules (High Activity Incidents)
-- Any rules from William or the team
-
-
-What knowledge base documents and instructions were you configured with? Give me a summary of:
-1. What systems you cover
-2. What troubleshooting steps you recommend per system
-3. What escalation paths you know
-4. Any rules or policies you follow
-5. Export everything you know as a structured document
-
-
--------------------
-
-Get-Content "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\SNOW_KB_CLEAN\*.txt" | Out-File "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\all_kbs_combined.txt" -Encoding UTF8
 ```
+You are Lalo's AI assistant for Oportun ESD L1 support.
 
-**Paso 2 — Crear el GPT personalizado.** Ve a ChatGPT → GPTs → Create a GPT y configúralo con:
+For every ticket, provide ALL of the following in JSON:
 
-Nombre: `ESD Lalo Assistant`
+1. "answer": Technical answer for the agent. Cite KB numbers. Include troubleshooting steps.
 
-Instrucciones:
-```
-You are Lalo's personal ESD L1 Support Assistant at Oportun Mexico.
+2. "suggested_message": Professional, empathetic message to send to the end user via Slack.
+   - Do NOT include KB numbers (users don't see those)
+   - Use simple language, step-by-step if applicable
+   - Match the ESD team's tone (professional but warm)
+   - End with "If you continue to experience issues, please let us know."
+   - Keep under 150 words
+
+3. "suggested_notes": Work notes for ServiceNow ticket.
+   - Technical and concise, bullet points
+   - Include KB numbers referenced
+   - Include: what was found, what was suggested, resolution status
+   - End with "Source: LLM-ESD RAG"
+
+4. "llm_prompt": A ready-to-paste prompt for the Custom GPT. Include:
+   - The relevant KB article content (actual text, not just numbers)
+   - The user's original question/issue
+   - Instructions for the output format (Slack message, email, work notes, etc.)
+   - Note about tone (professional, empathetic, ESD style)
 
 RULES:
-- ONLY use the uploaded knowledge files to answer. Never search the web. Never make up information.
-- If the answer is not in your knowledge files, say "I don't have that in my knowledge base."
-- SNOW work notes, escalation notes, closure notes: ALWAYS in English
-- Slack messages and SNOW comments to users: English or Spanish (I will specify)
-- App ID / Client ID / Loan ID: ONLY for retail systems (Zeus, Payments, OA, Oportun App, PNM, rACH)
-- NEVER ask for App ID on corporate systems (Hardware, VPN, Okta, Zoom, Slack, etc.)
-- My Zoom link: https://oportun.zoom.us/my/lalo.esd
-- My Slack emoji: :pika-wave:
-- My name in messages: Lalo from IT Support / ESD
+- ONLY use information from the provided KB articles.
+- If the articles don't contain the answer: say so in all fields, recommend escalation.
+- NEVER invent phone numbers, URLs, IDs, or any factual data.
+- Always cite KB numbers in answer and suggested_notes (NOT in suggested_message).
 
-WHEN I GIVE YOU A SHORT COMMAND like "zeus lento retail español escalación" you generate ALL outputs:
-1. Slack message to user
-2. SNOW comment to user
-3. SNOW work notes (English)
-4. Escalation notes if needed (English)
+RESPOND IN VALID JSON ONLY.
+```
 
-Use my exact style, tone, emojis, and structure from the uploaded templates.
+- If Ollama is not running, the endpoint returns an error message suggesting to use the manual prompt method instead.
+- The existing prompt-generation flow continues to work as before.
 
+Changes to `rag_frontend.html`:
+- Add a new section after "GENERATED GPT PROMPT": **"5. AI-GENERATED RESPONSE"**
+- A button "Generate with Local LLM" that calls `POST /generate`.
+- If successful, show four collapsible sections: Answer, Suggested Message (with Copy button), Suggested Notes (with Copy button), LLM Prompt (with Copy button).
+- If the server returns an error (Ollama not running), show a message: "Local LLM not available. Use the GPT Prompt above instead."
+- The existing flow (Parse Ticket → KB Suggestions → GPT Prompt) remains untouched.
 
+---
 
+### Upgrade 5: Incremental KB updates
 
-I have 4 new reference files that contain my real message templates, rules, and style. Read them all:
+**Current:** Full rebuild every time (`build_rag.py` processes all 580 files).
+**Upgrade:** Only re-process new or modified files.
 
-1. ESD_formatted_notes_and_messages.txt - my actual Slack and SNOW messages
-2. ESD_L1_Master_Reference.txt - master reference document
-3. esd_l1_ai_support_resumen.txt - knowledge from our existing ESD GPT
-4. ESD_L1_reference_playbook.txt - my operational playbook
+Changes to `build_rag.py`:
+- On each run, compute MD5 hash of each `.txt` file.
+- Store hashes in `rag_artifacts/file_hashes.json`.
+- Compare with previous hashes: classify as NEW, MODIFIED, UNCHANGED, DELETED.
+- Only parse/embed NEW and MODIFIED articles.
+- Rebuild FAISS index from full chunk set (FAISS doesn't support in-place deletion).
+- Rebuild BM25 index.
+- Add `--full` flag to force full rebuild.
+- Print summary: "3 new, 7 modified, 1 deleted, 569 unchanged (skipped)".
 
-Copy these files from Downloads to the LLM-ESD-LALO folder first.
+---
 
-Then do these tasks:
+### Upgrade 6: Evaluation and golden dataset
 
-TASK 1: IMPROVE RAG OUTPUTS
-- Read all 4 files and learn my exact message style, tone, emojis, structure
-- Update rag_search.py to generate outputs that match my real style:
-  * Slack messages: friendly, with :pika-wave:, numbered steps with emojis, warning about 3 days auto-close, "Gracias por tu colaboración. Best regards, ESD"
-  * SNOW comments: formal with Subject line
-  * SNOW work notes: always English, structured with Issue Summary, Customer Info (only retail), Troubleshoot Steps, Result, scope
-  * Escalation notes: always English, with "Team, could you please assist us?"
-- Fix App ID logic: ONLY ask for Zeus, Payments, OA, Oportun App, PNM, rACH. NEVER for Five9, Okta, VPN, Hardware, etc.
+**Current:** No way to measure retrieval quality.
+**Upgrade:** Add evaluation scripts and a golden dataset.
 
-TASK 2: BUILD WEB FRONTEND
-Based on the style of index_v2.html, create rag_frontend.html that:
-- Runs with rag_search.py as local server on localhost:8080
-- Clean modern UI matching my ESD Generator style
-- Search bar: type issue description, click Search
-- Top 5 results as cards with relevance %, system tag, title
-- Click a card → form appears: caller name, language (EN/ES toggle), action type dropdown (first contact / troubleshooting / escalation / closure / not-an-issue / hardware), ticket number
-- App ID field ONLY appears if system is retail
-- Generate button → shows outputs in separate boxes:
-  * Slack message
-  * SNOW comment
-  * SNOW work notes  
-  * Escalation notes (only if escalation selected)
-- Each box has "Copy" button
-- ALSO a "Copy prompt for GPT" button that generates a ready-to-paste prompt for my ChatGPT GPT with all context
-- Feedback buttons on each output: thumbs up / thumbs down / edit
-- Feedback saved to feedback.json
-- When generating, check feedback.json first for previous corrections
+New file `evaluate.py`:
+- Load `golden_dataset.json` (query + expected KB number pairs).
+- Run each query through the retriever in three modes: semantic-only, bm25-only, hybrid.
+- Calculate Recall@1, Recall@5, MRR for each mode.
+- Print comparison table.
+- Save results to `rag_artifacts/eval_results.json`.
 
-TASK 3: STARTUP SCRIPT
-Create start_rag.ps1 that:
-- Starts the Python server
-- Opens Chrome to localhost:8080
-- One command to launch everything
+New file `golden_dataset.json`:
+- Auto-generate a template from existing articles (title + symptoms → suggested query).
+- User edits queries to be natural language ("agent cant login five9" instead of "How to Reset Five9 Agent Password").
+- Support importing real queries from `ESD_formatted_notes_and_messages.txt` — parse out the original issues/questions from the examples.
 
-Save all files in LLM-ESD-LALO folder. Start with Task 1, then 2, then 3.
+New file `compare_models.py`:
+- Compare all-MiniLM-L6-v2 (384 dims) vs all-mpnet-base-v2 (768 dims) on the golden dataset.
+- Print Recall@5 and MRR for each.
+- Recommend which model to use.
 
+---
 
------------------focus
-Perfecto, veo el editor del GPT. Paso a paso:
-1. Description:
-ESD L1 Support Assistant for Lalo at Oportun. Generates Slack messages, SNOW notes, and escalation notes based on 580 KB articles and my personal templates.
-2. Instructions: Pega esto:
-You are Lalo's personal ESD L1 Support Assistant at Oportun Mexico.
+### Upgrade 7: QA / Tests
 
-RULES:
-- ONLY use the uploaded knowledge files to answer. Never make up information.
-- If the answer is not in your knowledge files, say "I don't have that in my knowledge base."
-- SNOW work notes, escalation notes, closure notes: ALWAYS in English, no exceptions
-- Slack messages and SNOW comments to users: English or Spanish (I will specify)
-- App ID / Client ID / Loan ID: ONLY for retail systems (Zeus, Payments, OA, Oportun App, PNM, rACH, Online Account, Lending, GCP, Encapture)
-- NEVER ask for App ID on corporate systems (Hardware, VPN, Okta, Zoom, Slack, Five9, Cresta, etc.)
-- My Zoom link: https://oportun.zoom.us/my/lalo.esd
-- My Slack emoji: :pika-wave:
-- My name in messages: Lalo from IT Support / ESD
-- Contact warning always included: "This is the first contact (up to 3 attempts, one per day). No response in 3 business days = auto-close."
-- Escalation notes always end with: "Team, could you please assist us?"
+New folder `tests/` with pytest tests:
 
-WHEN I GIVE YOU A SHORT COMMAND like "zeus lento retail español escalación" you generate ALL outputs:
-1. Slack message to user (with emojis, friendly tone, troubleshooting steps)
-2. SNOW comment to user (formal, with Subject line)
-3. SNOW work notes (English always)
-4. Escalation notes if needed (English always)
+**test_parser.py:** Test tag parsing, encoding artifact fixing, KB number extraction from filenames.
 
-When I paste a RAG prompt with KB content and ticket details, use that KB to generate accurate outputs matching my exact style from the uploaded templates.
+**test_search.py:** Test that searching "five9 password" returns Five9 articles. Test that searching "KB0012345" returns that specific article (BM25 should catch this). Test that results have required fields (kb_number, title, score, matched_by). Test that RRF scores are in descending order.
 
-Use my exact style, tone, emojis, and structure from the uploaded files.
-3. Conversation starters: Agrega estos:
-zeus lento retail español primer contacto
-Five9 no audio español escalación
-VPN not connecting english troubleshooting
-Okta invalid credentials corporate english
-4. Knowledge: Click "Upload files" y sube los 4 archivos que creaste. Después corre el comando de PowerShell para combinar los KBs y sube ese también.
-5. Capabilities: Desmarca Web Search y Image Generation. Deja Canvas y Code Interpreter activados.
-6. Recommended Model: Selecciona GPT-5.4 Thinking (o el más potente disponible).
-Haz esto y dale Create. Mándame foto cuando esté listo.
+**test_generator.py:** Test JSON response parsing. Test that low confidence triggers escalation flag. Test that invalid JSON falls back gracefully.
 
+**test_integration.py:** Full pipeline test: parse ticket text → search → verify results make sense. Requires indexes to exist (skip if not built).
 
-****
-Read these 4 files in LLM-ESD-LALO:
-- ESD_formatted_notes_and_messages.txt
-- ESD_L1_Master_Reference.txt
-- esd_l1_ai_support_resumen.txt
-- ESD_L1_reference_playbook.txt
+Add `pytest>=7.0` to dependencies.
 
-Combine them into ONE file called ESD_Lalo_Complete_Reference.txt with this structure:
+Run: `pytest tests/ -v`
 
-At the top, add a header explaining what this file is:
-"This document is a combined reference from 4 sources:
-1. ESD_formatted_notes_and_messages.txt - Real Slack and SNOW messages used by Lalo
-2. ESD_L1_Master_Reference.txt - Master reference of templates and formats
-3. esd_l1_ai_support_resumen.txt - Knowledge extracted from the ESD L1 AI Support GPT
-4. ESD_L1_reference_playbook.txt - Operational playbook and rules"
+---
 
-Then for each source, add a section header like:
-=== SOURCE 1: ESD_formatted_notes_and_messages.txt ===
-(full content)
+## Execution order
 
-=== SOURCE 2: ESD_L1_Master_Reference.txt ===
-(full content)
+```bash
+# 1. Install new dependencies
+pip install rank-bm25 nltk pytest
 
-=== SOURCE 3: esd_l1_ai_support_resumen.txt ===
-(full content)
+# 2. Download NLTK data
+python -c "import nltk; nltk.download('punkt_tab')"
 
-=== SOURCE 4: ESD_L1_reference_playbook.txt ===
-(full content)
+# 3. Rebuild indexes with all upgrades (full rebuild first time)
+python build_rag.py --full
 
-Keep ALL content from each file, don't remove or edit anything. Just combine them with clear source labels.
+# 4. Start server (existing launcher)
+start_rag.cmd
+# or: start_rag.ps1
 
-Save as ESD_Lalo_Complete_Reference.txt in LLM-ESD-LALO folder.
-Una vez que Codex termine, corre el comando de PowerShell para combinar los KBs:
-powershellGet-Content "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\SNOW_KB_CLEAN\*.txt" | Out-File "$env:USERPROFILE\OneDrive - Oportun\Desktop\LLM-ESD-LALO\all_kbs_combined.txt" -Encoding UTF8
-Después en el GPT editor sube estos 2 archivos en Knowledge:
+# 5. Test in browser: http://localhost:8080
+#    - Paste a ticket
+#    - Verify KB suggestions now show "matched_by: [semantic, bm25]"
+#    - Try "Generate with Local LLM" button (if Ollama is running)
 
-ESD_Lalo_Complete_Reference.txt
-all_kbs_combined.txt
+# 6. Edit golden_dataset.json with real queries
 
+# 7. Run evaluation
+python evaluate.py
 
+# 8. Compare embedding models
+python compare_models.py
 
+# 9. Run tests
+pytest tests/ -v
 
-Read these 4 files in LLM-ESD-LALO:
-- ESD_formatted_notes_and_messages.txt
-- ESD_L1_Master_Reference.txt
-- esd_l1_ai_support_resumen.txt
-- ESD_L1_reference_playbook.txt
+# 10. Incremental update after KB changes
+python build_rag.py
+# (only processes new/modified files)
+```
 
-Analyze all 4 files and create ONE optimized file called ESD_Lalo_Complete_Reference.txt that:
+---
 
-1. Merges all content intelligently - remove duplicates, keep the best version of each template
-2. Organizes everything into clear sections:
-   - OPERATIONAL RULES AND POLICIES
-   - MESSAGE TEMPLATES BY ACTION TYPE (first contact, troubleshooting, escalation, closure, not-an-issue, hardware)
-   - Each template labeled with: system type, language, retail vs corporate
-   - ESCALATION PATHS PER SYSTEM
-   - COMMON SCENARIOS WITH COMPLETE OUTPUTS
-   - STYLE RULES (tone, emojis, structure)
-3. At the top, note that this was compiled from the 4 source files
-4. Make it optimized for use as a GPT knowledge base - clear, searchable, no redundancy
+## What NOT to do
 
-Save as ESD_Lalo_Complete_Reference.txt in LLM-ESD-LALO folder.
+- DO NOT rewrite `rag_search.py` from scratch. Upgrade it in place.
+- DO NOT rewrite `rag_frontend.html` from scratch. Add new sections to the existing UI.
+- DO NOT change the existing prompt generation flow. It must continue working exactly as before.
+- DO NOT modify files in `SNOW_KB_CLEAN/` or `SNOW KB/`. Read-only.
+- DO NOT remove or rename any existing files without being asked.
+- DO NOT call external APIs (OpenAI, Azure). Local only (sentence-transformers + Ollama).
+- DO NOT change the localhost port (8080) — it's what `start_rag` scripts use.
+- DO NOT break the existing `KBRecord` structure — extend it with new fields (summary, chunks, bm25_tokens).
 
-Also generate the GPT configuration I should use. Create a file called GPT_INSTRUCTIONS.txt with:
-- The exact text I should paste in the GPT Instructions field
-- The Description text
-- 5 Conversation starters
-- Which capabilities to enable/disable
-- Which model to recommend
+---
 
-Base the instructions on everything you learned from the 4 files + the 580 enriched KBs + my operational context.
+## Summary of changes
 
-
-The all_kbs_combined.txt is too large for ChatGPT's GPT knowledge base. 
-
-1. First, count the total characters in all_kbs_combined.txt
-2. The GPT knowledge limit is approximately 2 million characters per file
-3. Calculate how many parts we need
-4. Split it into the minimum number of files needed, splitting cleanly between articles (never in the middle of one)
-5. Name them: all_kbs_part01.txt, all_kbs_part02.txt, etc.
-6. Save in LLM-ESD-LALO folder
+| What | File(s) | Type |
+|---|---|---|
+| BM25 hybrid search | `build_rag.py`, `rag_search.py` | Upgrade existing |
+| Semantic chunking | `build_rag.py` | Upgrade existing |
+| Summaries per article | `build_rag.py` | Upgrade existing |
+| Direct LLM generation | `rag_search.py`, `rag_frontend.html` | Upgrade existing |
+| Suggested message/notes/prompt | `rag_search.py`, `rag_frontend.html` | Upgrade existing |
+| Incremental KB updates | `build_rag.py` | Upgrade existing |
+| Evaluation | `evaluate.py` (new), `golden_dataset.json` (new) | New files |
+| Model comparison | `compare_models.py` (new) | New file |
+| QA tests | `tests/` folder (new) | New files |
